@@ -3,41 +3,38 @@ import { ScreenplayCoordinator } from "@/lib/screenplay/ScreenplayCoordinator";
 import { getFormatStyles } from "@/lib/screenplay/formatStyles";
 import { AgentContext } from "@/lib/screenplay/types";
 
+interface ProcessedLine {
+  html: string;
+  elementType: string;
+}
+
 export default function ScreenplayProcessor() {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [hasContent, setHasContent] = useState(false);
+  const [processedLines, setProcessedLines] = useState<ProcessedLine[]>([]);
   const pageRef = useRef<HTMLDivElement>(null);
   const coordinatorRef = useRef<ScreenplayCoordinator>(new ScreenplayCoordinator(getFormatStyles));
 
   const processContent = useCallback(async (rawText: string) => {
-    if (!rawText || rawText.trim() === "" || !pageRef.current) {
+    if (!rawText || rawText.trim() === "") {
       return;
     }
 
     setIsProcessing(true);
     
     try {
-      // Clear existing content
-      pageRef.current.innerHTML = "";
-      
       const lines = rawText.split(/\r?\n/).filter((l) => l.trim() !== "");
       const context: AgentContext = {};
-      
-      let currentPage = pageRef.current;
+      const newProcessedLines: ProcessedLine[] = [];
       
       for (const line of lines) {
         const res = coordinatorRef.current.processLine(line, context);
-        
-        const block = document.createElement("div");
-        block.innerHTML = res.html;
-        block.className = res.elementType;
-        
-        // Apply inline styles from the existing formatting rules
-        applyFormattingRules(block, res.elementType);
-        currentPage.appendChild(block);
+        newProcessedLines.push({
+          html: res.html,
+          elementType: res.elementType
+        });
       }
       
-      setHasContent(true);
+      setProcessedLines(newProcessedLines);
     } catch (error) {
       console.error("Error processing content:", error);
     } finally {
@@ -45,71 +42,64 @@ export default function ScreenplayProcessor() {
     }
   }, []);
 
-  const applyFormattingRules = (block: HTMLElement, type: string): void => {
+  const getElementStyle = (type: string): React.CSSProperties => {
     switch (type) {
       case "scene-header-1":
       case "scene-header-2":
-        Object.assign(block.style, {
+        return {
           display: "flex",
           justifyContent: "space-between",
           fontWeight: "bold",
-          textTransform: "uppercase",
+          textTransform: "uppercase" as const,
           marginBottom: "1em"
-        });
-        break;
+        };
 
       case "scene-header-3":
-        Object.assign(block.style, {
+        return {
           textAlign: "center",
           fontWeight: "bold",
           marginBottom: "0.5em"
-        });
-        break;
+        };
 
       case "action":
-        Object.assign(block.style, {
+        return {
           textAlign: "right",
           margin: "0.5em 0",
-          direction: "rtl"
-        });
-        break;
+          direction: "rtl" as const
+        };
 
       case "character":
-        Object.assign(block.style, {
+        return {
           textAlign: "center",
           fontWeight: "bold",
           margin: "1em 0 0.2em 0",
-          textTransform: "uppercase"
-        });
-        break;
+          textTransform: "uppercase" as const
+        };
 
       case "dialogue":
-        Object.assign(block.style, {
+        return {
           textAlign: "center",
           margin: "0 2em",
           lineHeight: "1.4"
-        });
-        break;
+        };
 
       case "parenthetical":
-        Object.assign(block.style, {
+        return {
           textAlign: "center",
           margin: "0 3em",
           fontStyle: "italic"
-        });
-        break;
+        };
 
       case "transition":
-        Object.assign(block.style, {
+        return {
           textAlign: "center",
           fontWeight: "bold",
-          textTransform: "uppercase",
+          textTransform: "uppercase" as const,
           margin: "1em auto"
-        });
-        break;
+        };
 
       case "director-note":
-        Object.assign(block.style, {
+        return {
           fontStyle: "italic",
           fontSize: "0.9em",
           color: "#555",
@@ -118,8 +108,10 @@ export default function ScreenplayProcessor() {
           border: "1px solid #ddd",
           borderRadius: "3px",
           padding: "2px 4px"
-        });
-        break;
+        };
+
+      default:
+        return {};
     }
   };
 
@@ -175,12 +167,20 @@ export default function ScreenplayProcessor() {
             جاري المعالجة...
           </div>
         )}
-        {!isProcessing && !hasContent && (
+        {!isProcessing && processedLines.length === 0 && (
           <div className="text-center text-gray-400 mt-20">
             <p className="mb-4">انقر هنا أو الصق نص السيناريو</p>
             <p className="text-sm">سيتم التنسيق تلقائياً وفقاً للمعايير المهنية</p>
           </div>
         )}
+        {!isProcessing && processedLines.map((line, index) => (
+          <div
+            key={index}
+            className={line.elementType}
+            style={getElementStyle(line.elementType)}
+            dangerouslySetInnerHTML={{ __html: line.html }}
+          />
+        ))}
       </div>
     </div>
   );
