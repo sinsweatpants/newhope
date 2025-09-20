@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
-import { ScreenplayCoordinator } from "@/lib/screenplay/ScreenplayCoordinator";
-import { getFormatStyles } from "@/lib/screenplay/formatStyles";
-import { AgentContext } from "@/lib/screenplay/types";
+import { ScreenplayCoordinator } from "@shared/ScreenplayCoordinator";
+import { getFormatStyles } from "@shared/formatStyles";
+import { AgentContext } from "@shared/types";
 
 export default function ScreenplayProcessor() {
   const [isProcessing, setIsProcessing] = useState(false);
