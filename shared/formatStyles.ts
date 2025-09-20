@@ -21,8 +21,8 @@ export const getFormatStyles = (formatType: string, selectedFont = 'Amiri', sele
     
     const finalStyles = { ...baseStyles, ...formatStyles[formatType] };
     
-    if (formatType === 'scene-header-1') return { fontWeight: 'bold', textTransform: 'uppercase' };
-    if (formatType === 'scene-header-2') return { fontStyle: 'italic' };
+    if (formatType === 'scene-header-1') return { ...baseStyles, fontWeight: 'bold', textTransform: 'uppercase' };
+    if (formatType === 'scene-header-2') return { ...baseStyles, fontStyle: 'italic' };
     
     return finalStyles;
 };

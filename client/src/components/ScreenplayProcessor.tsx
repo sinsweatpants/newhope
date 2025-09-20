@@ -26,62 +26,6 @@ export default function ScreenplayProcessor() {
     return page;
   };
 
-  const applyFormattingRules = (block: HTMLElement, type: string) => {
-    switch (type) {
-      case "scene-header-1":
-      case "scene-header-2":
-        Object.assign(block.style, {
-          display: "flex",
-          justifyContent: "space-between",
-          fontWeight: "bold",
-          textTransform: "uppercase"
-        });
-        break;
-
-      case "scene-header-3":
-        Object.assign(block.style, { 
-          textAlign: "center", 
-          fontWeight: "bold" 
-        });
-        break;
-
-      case "action":
-        Object.assign(block.style, {
-          textAlign: "right",
-          margin: "0.5em 1in 0.5em 1.5in",
-        });
-        break;
-
-      case "character":
-      case "dialogue":
-      case "parenthetical":
-        Object.assign(block.style, {
-          textAlign: "center",
-          margin: "0 1.5in",
-        });
-        break;
-
-      case "transition":
-        Object.assign(block.style, {
-          textAlign: "center",
-          fontWeight: "bold",
-          textTransform: "uppercase",
-        });
-        break;
-
-      case "director-note":
-        Object.assign(block.style, {
-          fontStyle: "italic",
-          fontSize: "0.9em",
-          color: "#666",
-          backgroundColor: "#f5f5f5",
-          border: "1px solid #ddd",
-          borderRadius: "3px",
-          padding: "2px 4px",
-        });
-        break;
-    }
-  };
 
   const processContent = useCallback(async (rawText: string) => {
     if (!rawText || rawText.trim() === "") {
@@ -110,9 +54,6 @@ export default function ScreenplayProcessor() {
 
         const block = document.createElement("div");
         block.innerHTML = res.html;
-        
-        // Apply formatting rules
-        applyFormattingRules(block, res.elementType);
 
         currentPage.appendChild(block);
         
@@ -169,9 +110,6 @@ export default function ScreenplayProcessor() {
 
         const block = document.createElement("div");
         block.innerHTML = res.html;
-        
-        // Apply formatting rules
-        applyFormattingRules(block, res.elementType);
 
         currentPage.appendChild(block);
         
