@@ -23,9 +23,14 @@ export class ScreenplayPasteProcessor {
     let currentPage = this.createPage();
     let pageContentHeight = 0;
     
+    // إضافة مؤقتة للـ DOM لحساب الارتفاع
+    document.body.appendChild(currentPage);
+    
     // 96px ≈ 1in (علوي + سفلي)
-    // Calculate usable height based on A4 dimensions: 297mm = ~1123px
-    const pageUsableHeight = 1123 - (96 * 2);
+    const pageUsableHeight = currentPage.clientHeight - (96 * 2);
+    
+    // إزالة مؤقتة
+    document.body.removeChild(currentPage);
 
     for (const line of lines) {
       const res = this.coordinator.processLine(line, context);
