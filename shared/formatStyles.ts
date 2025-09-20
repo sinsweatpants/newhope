@@ -9,7 +9,7 @@ export const getFormatStyles = (formatType: string, selectedFont = 'Amiri', sele
     };
     
     const formatStyles: { [key: string]: React.CSSProperties } = {
-      basmala: { textAlign: 'center', margin: '0 auto', display: 'block', width: '100%' },
+      basmala: { textAlign: 'left', margin: '0' },
       'scene-header-top-line': { display: 'flex', justifyContent: 'space-between', width: '100%', margin: '1rem 0 0 0' },
       'scene-header-3': { textAlign: 'center', fontWeight: 'bold', margin: '0' },
       action: { textAlign: 'right', margin: '1rem 0' },
