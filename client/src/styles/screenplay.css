@@ -47,9 +47,9 @@
 .dialogue,
 .parenthetical {
   text-align: center;
-  margin: 0 1.5in;
+  margin: 0.2em 1.5in;
   max-width: calc(210mm - 2.5in);
-  line-height: 1.4;
+  line-height: 1.15;
 }
 
 /* الانتقالات */
