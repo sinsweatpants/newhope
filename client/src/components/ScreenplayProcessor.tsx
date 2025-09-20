@@ -71,18 +71,18 @@ export default function ScreenplayProcessor() {
             <div className="flex items-center space-x-4">
               <Film className="w-8 h-8 text-foreground" />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">Screenplay Paste Processor</h1>
-                <p className="text-sm text-muted-foreground">Professional screenplay formatting tool</p>
+                <h1 className="text-2xl font-bold text-foreground">معالج لصق السيناريو</h1>
+                <p className="text-sm text-muted-foreground">أداة تنسيق السيناريو الاحترافية</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <Button className="flex items-center space-x-2" data-testid="button-export-pdf">
                 <Download className="w-4 h-4" />
-                <span>Export PDF</span>
+                <span>تصدير PDF</span>
               </Button>
               <Button variant="outline" className="flex items-center space-x-2" data-testid="button-settings">
                 <Settings className="w-4 h-4" />
-                <span>Settings</span>
+                <span>الإعدادات</span>
               </Button>
             </div>
           </div>
@@ -94,27 +94,27 @@ export default function ScreenplayProcessor() {
         {/* Instructions Panel */}
         <Card className="mb-8">
           <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-card-foreground mb-4">How to Use</h2>
+            <h2 className="text-lg font-semibold text-card-foreground mb-4">طريقة الاستخدام</h2>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold">1</div>
                 <div>
-                  <h3 className="font-medium text-card-foreground">Paste Your Script</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Copy and paste your screenplay text into the processing area</p>
+                  <h3 className="font-medium text-card-foreground">الصق النص</h3>
+                  <p className="text-sm text-muted-foreground mt-1">انسخ والصق نص السيناريو في منطقة المعالجة</p>
                 </div>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold">2</div>
                 <div>
-                  <h3 className="font-medium text-card-foreground">Automatic Processing</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Text is automatically classified and formatted according to industry standards</p>
+                  <h3 className="font-medium text-card-foreground">المعالجة التلقائية</h3>
+                  <p className="text-sm text-muted-foreground mt-1">يتم تصنيف النص وتنسيقه تلقائياً وفقاً للمعايير المهنية</p>
                 </div>
               </div>
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold">3</div>
                 <div>
-                  <h3 className="font-medium text-card-foreground">Professional Output</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Get perfectly formatted A4 pages ready for production</p>
+                  <h3 className="font-medium text-card-foreground">مخرج احترافي</h3>
+                  <p className="text-sm text-muted-foreground mt-1">احصل على صفحات A4 منسقة بشكل مثالي جاهزة للإنتاج</p>
                 </div>
               </div>
             </div>
@@ -124,17 +124,17 @@ export default function ScreenplayProcessor() {
         {/* Processing Area */}
         <Card className="mb-8">
           <CardContent className="p-6">
-            <h2 className="text-lg font-semibold text-card-foreground mb-4">Script Processing Area</h2>
+            <h2 className="text-lg font-semibold text-card-foreground mb-4">منطقة معالجة النص</h2>
             <div className="border-2 border-dashed border-muted rounded-lg p-8">
               <div className="text-center mb-4">
                 <Clipboard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-2">Paste your screenplay text here</p>
-                <p className="text-sm text-muted-foreground mb-4">The processor will automatically detect and format scene headers, action lines, character names, dialogue, and transitions</p>
+                <p className="text-muted-foreground mb-2">الصق نص السيناريو هنا</p>
+                <p className="text-sm text-muted-foreground mb-4">سيقوم المعالج تلقائياً باكتشاف وتنسيق ترويسات المشاهد، أسطر الحدث، أسماء الشخصيات، الحوار، والانتقالات</p>
               </div>
               
               <Textarea
                 ref={textareaRef}
-                placeholder="Paste your screenplay content here or use the button below to process clipboard content..."
+                placeholder="الصق محتوى السيناريو هنا أو استخدم الزر أدناه لمعالجة محتوى الحافظة..."
                 className="min-h-32 font-mono"
                 onPaste={handlePaste}
                 disabled={isProcessing}
@@ -148,7 +148,7 @@ export default function ScreenplayProcessor() {
                   className="px-6 py-2"
                   data-testid="button-process-clipboard"
                 >
-                  {isProcessing ? "Processing..." : "Process Clipboard Content"}
+                  {isProcessing ? "يتم المعالجة..." : "معالجة محتوى الحافظة"}
                 </Button>
               </div>
 
@@ -171,27 +171,27 @@ export default function ScreenplayProcessor() {
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold text-card-foreground mb-4">Automatic Formatting</h3>
+              <h3 className="text-lg font-semibold text-card-foreground mb-4">التنسيق التلقائي</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li className="flex items-center space-x-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Scene headers with proper capitalization</span>
+                  <span>ترويسات المشاهد مع الترقيم المناسب</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Character names centered and bold</span>
+                  <span>أسماء الشخصيات في الوسط وبخط عريض</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Dialogue with proper margins</span>
+                  <span>الحوار مع الهوامش المناسبة</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Action lines with right alignment</span>
+                  <span>أسطر الحدث محاذاة لليمين</span>
                 </li>
                 <li className="flex items-center space-x-2">
                   <Check className="w-4 h-4 text-green-500" />
-                  <span>Transitions and director notes</span>
+                  <span>الانتقالات وملاحظات المخرج</span>
                 </li>
               </ul>
             </CardContent>
