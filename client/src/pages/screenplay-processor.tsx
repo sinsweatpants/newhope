@@ -1,5 +1,5 @@
-import ScreenplayProcessor from "@/components/ScreenplayProcessor";
+import ScreenplayEditor from "@/components/ScreenplayEditor";
 
 export default function ScreenplayProcessorPage() {
-  return <ScreenplayProcessor />;
+  return <ScreenplayEditor />;
 }
