@@ -1,26 +1,32 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import {
-  Sparkles, X, Loader2, Sun, Moon, Copy, FileText,
-  Bold, Italic, Underline, AlignLeft, AlignCenter,
-  AlignRight,
-  Palette,
-  Search, Replace, Save, FolderOpen, Printer, Eye, Settings,
-  Download, Upload,
-  FilePlus, Undo, Redo, Scissors,
-  ChevronsRight, Pencil, ChevronDown,
-  BookHeart, Film, MapPin, Camera, Feather, UserSquare,
-  Parentheses, MessageCircle, FastForward, BrainCircuit, NotebookText
-} from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
+
+import ClipboardModule from '../modules/ClipboardModule';
+import FontModule from '../modules/FontModule';
+import ParagraphModule from '../modules/ParagraphModule';
+import StylesModule from '../modules/StylesModule';
+import EditingModule from '../modules/EditingModule';
 
 import { ScreenplayCoordinator } from '@shared/ScreenplayCoordinator';
 import { getFormatStyles } from '@shared/formatStyles';
+import {
+  applyCapturedFormatting,
+  captureFormatting,
+  getEditorSelection,
+  type CapturedFormatting,
+} from '@/features/screenplay/utils/editorCommands';
 
 // ============================================================================
 // Constants & Components
 // ============================================================================
 const PIXELS_PER_CM = 37.7952755906;
 
-const Ruler = ({ orientation = 'horizontal', isDarkMode }) => {
+interface RulerProps {
+  orientation?: 'horizontal' | 'vertical';
+  isDarkMode: boolean;
+}
+
+const Ruler = ({ orientation = 'horizontal', isDarkMode }: RulerProps) => {
   const length = orientation === 'horizontal' ? 21 * PIXELS_PER_CM : 29.7 * PIXELS_PER_CM;
   const lengthInCm = Math.floor(orientation === 'horizontal' ? 21 : 29.7);
   const numbers = Array.from({ length: lengthInCm }, (_, i) => {
@@ -42,6 +48,8 @@ const ScreenplayEditor = () => {
   const [selectedFont, setSelectedFont] = useState('Amiri');
   const [selectedSize, setSelectedSize] = useState('12pt');
   const [documentStats, setDocumentStats] = useState({ pages: 1, words: 0 });
+  const [capturedFormatting, setCapturedFormatting] = useState<CapturedFormatting | null>(null);
+  const [showFormattingMarks, setShowFormattingMarks] = useState(false);
   const layoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const coordinator = useMemo(() => new ScreenplayCoordinator((type, font, size) => getFormatStyles(type, font, size)), []);
@@ -102,30 +110,69 @@ const ScreenplayEditor = () => {
     updateStats(pageCounter);
   }, [updateStats]);
 
+  const processImportedScript = useCallback(
+    (textData: string) => {
+      if (!textData || !editorRef.current) return;
 
-  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const textData = e.clipboardData.getData('text/plain');
-    if (!textData || !editorRef.current) return;
-    
-    const lines = textData.split('\n');
-    const { results } = coordinator.processScript(lines);
-    const formattedHTML = results.map(r => r.html).join('');
-    
-    editorRef.current.innerHTML = formattedHTML;
+      const editor = editorRef.current;
+      const lines = textData.split('\n');
+      const { results } = coordinator.processScript(lines);
+      const formattedHTML = results.map(r => r.html).join('');
 
-    const divs = editorRef.current.querySelectorAll('div, span');
-    divs.forEach(div => {
+      const selection = getEditorSelection(editor);
+
+      if (selection) {
+        const { selection: activeSelection, range } = selection;
+        range.deleteContents();
+        const template = document.createElement('div');
+        template.innerHTML = formattedHTML;
+        const fragment = document.createDocumentFragment();
+        while (template.firstChild) {
+          fragment.appendChild(template.firstChild);
+        }
+        range.insertNode(fragment);
+        activeSelection.collapseToEnd();
+      } else {
+        editor.innerHTML = formattedHTML;
+      }
+
+      const divs = editor.querySelectorAll('div, span');
+      divs.forEach(div => {
         const el = div as HTMLElement;
         if (el.className) {
-            const baseClass = el.className.split(' ')[0];
-            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-            Object.assign(el.style, styles);
+          const baseClass = el.className.split(' ')[0];
+          const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+          Object.assign(el.style, styles);
         }
-    });
+      });
 
-    layoutAndPaginate();
-  }, [coordinator, selectedFont, selectedSize, layoutAndPaginate]);
+      layoutAndPaginate();
+    },
+    [coordinator, selectedFont, selectedSize, layoutAndPaginate]
+  );
+
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const textData = e.clipboardData.getData('text/plain');
+      if (!textData) return;
+      processImportedScript(textData);
+    },
+    [processImportedScript]
+  );
+
+  const handleCaptureFormatting = useCallback(() => {
+    const captured = captureFormatting(editorRef.current);
+    if (captured) {
+      setCapturedFormatting(captured);
+    }
+  }, [editorRef]);
+
+  const handleApplyCapturedFormatting = useCallback(() => {
+    if (!capturedFormatting) return;
+    applyCapturedFormatting(editorRef.current, capturedFormatting);
+    setTimeout(() => layoutAndPaginate(), 0);
+  }, [capturedFormatting, editorRef, layoutAndPaginate]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -231,21 +278,72 @@ const ScreenplayEditor = () => {
           left: 50%;
           transform: translateX(-50%);
         }
+        .page-content[data-show-formatting="true"] div,
+        .page-content[data-show-formatting="true"] p,
+        .page-content[data-show-formatting="true"] li {
+          position: relative;
+        }
+        .page-content[data-show-formatting="true"] div::after,
+        .page-content[data-show-formatting="true"] p::after,
+        .page-content[data-show-formatting="true"] li::after {
+          content: '¶';
+          position: absolute;
+          right: -0.8rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: ${isDarkMode ? '#9ca3af' : '#6b7280'};
+          font-size: 0.75rem;
+        }
+        .page-content .format-match {
+          outline: 1px dashed #3b82f6;
+          background-color: rgba(59,130,246,0.12);
+        }
+        .page-content[data-show-formatting="true"] {
+          background-image: linear-gradient(rgba(148,163,184,0.15) 1px, transparent 1px);
+          background-size: 100% 24px;
+        }
       `}} />
 
       {/* Header */}
       <div className="flex-shrink-0 px-4 py-2 shadow-sm z-30 bg-gray-100 dark:bg-gray-700">
-        <div className="flex justify-between items-center">
-            <h1 className="text-lg font-bold" style={{fontFamily: 'Amiri'}}>محرر السيناريو</h1>
-            <div className="flex items-center gap-2">
-                 <select value={selectedFont} onChange={e => setSelectedFont(e.target.value)} className="p-1 border rounded bg-white dark:bg-gray-600">
-                    <option value="Amiri">Amiri</option>
-                    <option value="Courier Prime">Courier Prime</option>
-                </select>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
-                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-                </button>
-            </div>
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold" style={{ fontFamily: 'Amiri' }}>
+            محرر السيناريو
+          </h1>
+          <button
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+          >
+            {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-shrink-0 border-y border-gray-200/80 dark:border-gray-700/60 bg-gray-50/80 dark:bg-gray-800/80 px-4 py-3 space-y-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ClipboardModule
+            editorRef={editorRef}
+            onPasteText={processImportedScript}
+            onCaptureFormat={handleCaptureFormatting}
+            onApplyCapturedFormat={handleApplyCapturedFormatting}
+            hasCapturedFormat={Boolean(capturedFormatting)}
+          />
+          <FontModule
+            editorRef={editorRef}
+            selectedFont={selectedFont}
+            selectedSize={selectedSize}
+            onDefaultFontChange={setSelectedFont}
+            onDefaultSizeChange={setSelectedSize}
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <ParagraphModule
+            editorRef={editorRef}
+            showFormattingMarks={showFormattingMarks}
+            onToggleFormattingMarks={(value) => setShowFormattingMarks(value)}
+          />
+          <StylesModule editorRef={editorRef} />
+          <EditingModule editorRef={editorRef} />
         </div>
       </div>
 
@@ -255,12 +353,13 @@ const ScreenplayEditor = () => {
             <Ruler orientation="horizontal" isDarkMode={isDarkMode} />
             <Ruler orientation="vertical" isDarkMode={isDarkMode} />
             <div className="page-background">
-                <div 
+                <div
                     ref={editorRef}
                     contentEditable={true}
                     suppressContentEditableWarning={true}
                     onPaste={handlePaste}
                     className="page-content"
+                    data-show-formatting={showFormattingMarks}
                     data-testid="screenplay-editor"
                 />
             </div>
