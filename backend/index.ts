@@ -3,14 +3,22 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import minimist from 'minimist';
 import * as functions from 'firebase-functions';
+import http from 'http';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Middleware and other app setup...
 (async () => {
-  const server = await registerRoutes(app);
+  const server = http.createServer(app);
+
+  if (process.env.NODE_ENV === "development") {
+    await setupVite(app, server);
+  } else if (process.env.NODE_ENV === "production") {
+    serveStatic(app);
+  }
+
+  await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -19,15 +27,7 @@ app.use(express.urlencoded({ extended: false }));
     throw err;
   });
 
-  if (process.env.NODE_ENV === "development") {
-    await setupVite(app, server);
-  } else {
-    // In production (Firebase), Express app is exported. 
-    // Static serving is handled by Firebase Hosting.
-  }
-
-  // Only listen on a port when running in a local development environment
-  if (process.env.NODE_ENV === 'development') {
+  if (!process.env.K_SERVICE) {
     const argv = minimist(process.argv.slice(2));
     const port = parseInt(argv.port || process.env.PORT || '5000', 10);
     server.listen({
@@ -40,5 +40,4 @@ app.use(express.urlencoded({ extended: false }));
   }
 })();
 
-// Export the Express API as a Firebase Function
 export const api = functions.https.onRequest(app);
