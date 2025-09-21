@@ -19,12 +19,7 @@ import EditingToolbar from './EditingToolbar';
 // ============================================================================
 const PIXELS_PER_CM = 37.7952755906;
 
-interface RulerProps {
-  orientation?: 'horizontal' | 'vertical';
-  isDarkMode: boolean;
-}
-
-const Ruler: React.FC<RulerProps> = ({ orientation = 'horizontal', isDarkMode }) => {
+const Ruler = ({ orientation = 'horizontal', isDarkMode }) => {
   const length = orientation === 'horizontal' ? 21 * PIXELS_PER_CM : 29.7 * PIXELS_PER_CM;
   const lengthInCm = Math.floor(orientation === 'horizontal' ? 21 : 29.7);
   const numbers = Array.from({ length: lengthInCm }, (_, i) => {
@@ -316,7 +311,7 @@ const ScreenplayEditor = () => {
                 </button>
             </div>
         </div>
-        <div className="flex flex-row items-center gap-2 overflow-x-auto pb-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2">
           <ClipboardToolbar onFormatPainterToggle={handleFormatPainterToggle} isFormatPainterActive={isFormatPainterActive} />
           <div className="border-l h-6 border-gray-300 dark:border-gray-500"></div>
           <FontToolbar />
