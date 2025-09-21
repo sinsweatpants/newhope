@@ -2,6 +2,7 @@
 export const Patterns = (() => {
   const c = (s: string | RegExp, flags = "") => new RegExp(s, flags);
   return {
+    basmala: new RegExp("^\\s*بسم\\s+الله\\s+الرحمن\\s+الرحيم\\s*$", "i"),
     characterBullets: new RegExp("^([•○●◦▪▫■□◼◻⚫⚪🔴🔵⭕]+|[-–—*+])\\s*"),
     characterNames: new RegExp("^([\\u0600-\\u06FFا-ي\\s]+)\\s*[:：]\\s*"),
     sceneKeywords: c("^(مشهد|لقطة|منظر|مكان|زمن|وقت|SCENE|LOCATION|TIME)\\s*", "i"),

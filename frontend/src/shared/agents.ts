@@ -27,6 +27,15 @@ export function compileHtml(tag: string, cls: string, text: string, getFormatSty
 }
 
 // Formatting Agents
+export const BasmalaAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+  if (Patterns.basmala.test(line)) {
+    const html = compileHtml("div", "basmala", line.trim(), getFormatStylesFn);
+    ctx.inDialogue = false;
+    return { html, processed: true, confidence: 1.0, elementType: "basmala", agentUsed: "BasmalaAgent", originalLine: line, context: ctx };
+  }
+  return null;
+}
+
 export const SceneHeaderAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
   const trimmedLine = line.trim();
   const m2 = trimmedLine.match(/^(مشهد\s*\d+)\s*[-–—:،]?\s*(.*)$/i);
@@ -57,6 +66,11 @@ export const SceneHeaderAgent: FormattingAgent = (line, ctx, getFormatStylesFn) 
 }
 
 export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+    if (!line.trim()) {
+        ctx.inDialogue = false;
+        return { html: '<div><br></div>', processed: true, confidence: 1.0, elementType: "empty-line", agentUsed: "CharacterDialogueAgent", originalLine: line, context: ctx };
+    }
+
     const direct = line.match(Patterns.characterNames);
     if (direct) {
         const name = direct[1].trim();

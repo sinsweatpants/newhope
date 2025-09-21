@@ -1,5 +1,5 @@
 import type { AgentContext, AgentResult, FormattingAgent } from './types';
-import { TransitionAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, DefaultAgent } from './agents';
+import { BasmalaAgent, TransitionAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, DefaultAgent } from './agents';
 
 // ScreenplayCoordinator Class
 export class ScreenplayCoordinator {
@@ -8,7 +8,7 @@ export class ScreenplayCoordinator {
 
   constructor(getFormatStylesFn: (formatType: string, font?: string, size?: string) => React.CSSProperties) {
     this.getFormatStylesFn = getFormatStylesFn;
-    this.agents = [ TransitionAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, DefaultAgent ];
+    this.agents = [ BasmalaAgent, TransitionAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, DefaultAgent ];
   }
 
   processLine(line: string, context: AgentContext = {}): AgentResult {
