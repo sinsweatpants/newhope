@@ -3,7 +3,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import ScreenplayProcessorPage from "@/pages/screenplay-processor";
+import ScreenplayProcessorPage from "@/features/screenplay/pages/screenplay-processor";
 import NotFound from "@/pages/not-found";
 
 function Router() {
