@@ -375,6 +375,32 @@ class FileReaderService {
   }
 
   /**
+   * Validate an incoming file before processing
+   */
+  validateFile(file: File): { isValid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (!file) {
+      return { isValid: false, errors: ['لم يتم توفير ملف'] };
+    }
+
+    if (file.size === 0) {
+      errors.push('الملف فارغ');
+    }
+
+    const maxSizeBytes = 50 * 1024 * 1024; // 50MB practical limit
+    if (file.size > maxSizeBytes) {
+      errors.push('حجم الملف كبير جداً');
+    }
+
+    if (!this.isSupported(file)) {
+      errors.push('نوع الملف غير مدعوم');
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  /**
    * Validate file type
    */
   isSupported(file: File): boolean {

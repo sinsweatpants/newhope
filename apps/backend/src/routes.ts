@@ -5,8 +5,8 @@ import { notificationsRouter } from "./notifications";
 import multer from "multer";
 import path from "path";
 import { promises as fs } from 'fs';
-import { ocrService } from '@shared/services/ocrService';
-import { classificationService } from '@shared/services/classificationService';
+import { ocrBackendService } from './services/ocr';
+import { classificationBackendService } from './services/classification';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -91,30 +91,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { fileId, filePath, fileData, originalName, mimetype, options } = req.body ?? {};
 
       if (!fileId && !filePath && !fileData) {
-        return res.status(400).json({ success: false, error: 'لم يتم تمرير ملف للمعالجة' });
+        return res.status(400).json({ success: false, data: null, error: 'لم يتم تمرير ملف للمعالجة' });
       }
 
       const resolvedInfo = await resolveIncomingFile({ fileId, filePath, fileData, originalName, mimetype });
       if (!resolvedInfo) {
-        return res.status(404).json({ success: false, error: 'تعذر العثور على الملف المطلوب' });
+        return res.status(404).json({ success: false, data: null, error: 'تعذر العثور على الملف المطلوب' });
       }
 
       const { buffer, name, type } = resolvedInfo;
-      const file = new File([buffer], name, { type });
-
-      const result = await ocrService.processFile(file, {
+      const result = await ocrBackendService.process({
+        buffer,
+        filename: name,
+        mimetype: type
+      }, {
         language: options?.language,
-        preprocessImage: true,
-        fallbackOnLowConfidence: true,
-        engines: options?.engines,
+        preprocessImage: options?.preprocessImage,
         confidenceThreshold: options?.confidenceThreshold,
-        outputFormat: options?.outputFormat
+        engines: options?.engines,
+        maxPages: options?.maxPages
       });
 
-      res.json({ success: true, data: result });
+      res.json({ success: true, data: result, error: null });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'OCR processing failed';
-      res.status(500).json({ success: false, error: message });
+      res.status(500).json({ success: false, data: null, error: message });
     }
   });
 
@@ -127,11 +128,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, error: 'نص السيناريو مطلوب للتصنيف' });
       }
 
-      const result = await classificationService.classify({ text, context, options });
-      res.json({ success: true, data: result });
+      const result = await classificationBackendService.classify({ text, context, options });
+      res.json({ success: true, data: result, error: null });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Classification failed';
-      res.status(500).json({ success: false, error: message });
+      res.status(500).json({ success: false, data: null, error: message });
     }
   });
 

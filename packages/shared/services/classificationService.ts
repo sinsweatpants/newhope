@@ -39,7 +39,7 @@ export interface ClassificationResult {
   };
 }
 
-class ClassificationService {
+export class ClassificationService {
   private localClassifier: ScreenplayClassifier;
   private classificationCache = new Map<string, ClassificationResult>();
   private statistics = {

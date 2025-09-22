@@ -1,9 +1,13 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { ocrService } from '@shared/services/ocrService';
 
 const createMockImage = () => new File(['dummy'], 'page.png', { type: 'image/png' });
 
 describe('ocrService', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -38,5 +42,36 @@ describe('ocrService', () => {
     expect(result.text).toBe('');
     expect(result.confidence).toBe(0);
     expect(result.metadata.warnings?.[0]).toContain('All OCR engines failed');
+  });
+
+  it('invokes backend fallback when Scribe is unavailable', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch' as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          text: 'Fallback text',
+          confidence: 0.82,
+          engine: 'scribe',
+          processingTime: 123,
+          metadata: { warnings: ['backend'] }
+        }
+      })
+    } as any);
+
+    vi.spyOn(ocrService as any, 'loadScribe').mockResolvedValue({
+      recognize: async () => {
+        throw new Error('Local scribe failure');
+      }
+    });
+
+    const result = await (ocrService as any).processWithScribe(createMockImage(), { language: 'eng' });
+
+    expect(fetchSpy).toHaveBeenCalled();
+    expect(result.text).toBe('Fallback text');
+    expect(result.engine).toBe('scribe');
+    expect(result.metadata.warnings).toContainEqual(expect.stringContaining('Local Scribe unavailable'));
+
+    fetchSpy.mockRestore();
   });
 });
