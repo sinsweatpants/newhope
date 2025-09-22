@@ -2,7 +2,7 @@
 export const Patterns = (() => {
   const c = (s: string | RegExp, flags = "") => new RegExp(s, flags);
   return {
-    basmala: new RegExp("^\\s*\\}{?\\s*بسم\\s+الله\\s+الرحمن\\s+الرحيم\\s*\\}{?\\s*$", "i"),
+    basmala: new RegExp("^\\s*[\\{\\}]?\\s*بسم\\s+الله\\s+الرحمن\\s+الرحيم\\s*[\\{\\}]?\\s*$", "i"),
     actionBullet: new RegExp("^([•○●◦▪▫■□◼◻⚫⚪🔴🔵⭕]+|[-–—*+])\\s*"),
     // This pattern now optionally matches a bullet point before the character name.
     characterNames: new RegExp("^\\s*(?:[•○●◦▪▫■□◼◻⚫⚪🔴🔵⭕]+|[-–—*+])?\\s*([\\u0600-\\u06FFا-ي\\s]+)\\s*[:：]\\s*"),
