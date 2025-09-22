@@ -1,33 +1,16 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { customStylesManager, CustomStyle } from '@shared/CustomStylesManager';
-import StylesDialog from './StylesDialog';
+import { Button } from "@/components/ui/button";
+import { StylesDialog } from "./StylesDialog";
+import { CustomStyle } from "@shared/screenplay/types";
 
 interface StylesToolbarProps {
-  onStylesUpdate: () => void;
-  customStyles: CustomStyle[];
+    customStyles: CustomStyle[];
+    applyStyle: (style: string) => void;
+    setStylesDialogOpen: (open: boolean) => void;
+    isStylesDialogOpen: boolean;
+    onStylesUpdate: (styles: CustomStyle[]) => void;
 }
 
-
-const StylesToolbar: React.FC<StylesToolbarProps> = ({ onStylesUpdate, customStyles }) => {
-  const [isStylesDialogOpen, setStylesDialogOpen] = useState(false);
-
-  const applyStyle = (styleName: string) => {
-    const style = customStylesManager.getStyle(styleName);
-    if (style) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const parentElement = range.commonAncestorContainer.parentElement;
-        if (parentElement) {
-          customStylesManager.applyStyle(parentElement, style);
-        }
-      }
-    } else {
-        document.execCommand('formatBlock', false, styleName);
-    }
-  };
-
+export function StylesToolbar({ customStyles, applyStyle, setStylesDialogOpen, isStylesDialogOpen, onStylesUpdate }: StylesToolbarProps) {
   return (
     <>
       <div className="flex items-center space-x-2 border-r pr-2">
@@ -53,6 +36,4 @@ const StylesToolbar: React.FC<StylesToolbarProps> = ({ onStylesUpdate, customSty
       />
     </>
   );
-};
-
-export default StylesToolbar;
+}

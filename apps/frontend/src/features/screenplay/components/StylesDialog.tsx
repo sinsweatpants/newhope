@@ -9,7 +9,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { customStylesManager, CustomStyle } from '@shared/CustomStylesManager';
+import { customStylesManager, CustomStyle } from '@shared/screenplay/customStylesManager';
 
 
 interface StylesDialogProps {
@@ -18,7 +18,7 @@ interface StylesDialogProps {
   onStylesUpdate: () => void;
 }
 
-const StylesDialog: React.FC<StylesDialogProps> = ({ isOpen, onClose, onStylesUpdate }) => {
+export const StylesDialog: React.FC<StylesDialogProps> = ({ isOpen, onClose, onStylesUpdate }) => {
   const [styleName, setStyleName] = useState('');
 
   const handleCreateStyle = () => {
@@ -90,5 +90,3 @@ const StylesDialog: React.FC<StylesDialogProps> = ({ isOpen, onClose, onStylesUp
     </Dialog>
   );
 };
-
-export default StylesDialog;

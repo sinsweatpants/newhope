@@ -1,25 +1,18 @@
-import React, { useState, useCallback } from 'react';
-import { Button } from '@/components/ui/button';
-import { Scissors, Clipboard, ClipboardPaste, Brush } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Scissors, Clipboard, ClipboardPaste, Brush } from "lucide-react";
 
 interface ClipboardToolbarProps {
-  onFormatPainterToggle: (active: boolean) => void;
-  isFormatPainterActive: boolean;
+    isFormatPainterActive: boolean;
+    toggleFormatPainter: () => void;
 }
 
-
-const ClipboardToolbar: React.FC<ClipboardToolbarProps> = ({ onFormatPainterToggle, isFormatPainterActive }) => {
-
-  const toggleFormatPainter = () => {
-    onFormatPainterToggle(!isFormatPainterActive);
-  };
-
+export function ClipboardToolbar({ isFormatPainterActive, toggleFormatPainter }: ClipboardToolbarProps) {
   return (
     <TooltipProvider>
       <div className="flex items-center space-x-2 border-r pr-2">
@@ -66,6 +59,4 @@ const ClipboardToolbar: React.FC<ClipboardToolbarProps> = ({ onFormatPainterTogg
       </div>
     </TooltipProvider>
   );
-};
-
-export default ClipboardToolbar;
+}

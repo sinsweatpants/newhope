@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ router.post('/register', async (req, res) => {
     // associated with a user. For this example, we'll just log it.
     console.log(`Received token: ${token}`);
     res.status(200).send({ message: 'Token registered successfully' });
-  } catch (error) M {
+  } catch (error) {
     console.error('Error registering token:', error);
     res.status(500).send({ message: 'Internal Server Error' });
   }

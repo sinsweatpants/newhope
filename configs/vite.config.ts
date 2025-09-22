@@ -25,6 +25,9 @@ export default defineConfig({
       "@shared": path.resolve(import.meta.dirname, "..", "packages", "shared"),
     },
   },
+  define: {
+    global: 'globalThis',
+  },
   publicDir: path.resolve(import.meta.dirname, "..", "apps", "frontend", "public"),
   root: path.resolve(import.meta.dirname, "..", "apps", "frontend"),
   build: {

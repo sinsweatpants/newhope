@@ -1,26 +1,18 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  AlignCenter, AlignLeft, AlignRight, AlignJustify, List, ListOrdered, Indent, Outdent, Pilcrow
-} from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { AlignLeft, AlignCenter, AlignRight, AlignJustify, List, ListOrdered, Indent, Outdent, Pilcrow } from "lucide-react";
 
 interface ParagraphToolbarProps {
-  onShowFormattingToggle: (show: boolean) => void;
-  showFormatting: boolean;
+    showFormatting: boolean;
+    toggleShowFormatting: () => void;
 }
 
-const ParagraphToolbar: React.FC<ParagraphToolbarProps> = ({ onShowFormattingToggle, showFormatting }) => {
-
-  const toggleShowFormatting = () => {
-    onShowFormattingToggle(!showFormatting);
-  };
-  
+export function ParagraphToolbar({ showFormatting, toggleShowFormatting }: ParagraphToolbarProps) {
   return (
     <TooltipProvider>
       <div className="flex items-center space-x-2 border-r pr-2">
@@ -117,6 +109,4 @@ const ParagraphToolbar: React.FC<ParagraphToolbarProps> = ({ onShowFormattingTog
       </div>
     </TooltipProvider>
   );
-};
-
-export default ParagraphToolbar;
+}

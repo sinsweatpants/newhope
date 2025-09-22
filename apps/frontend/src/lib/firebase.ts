@@ -14,6 +14,12 @@ const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
 
 export const requestForToken = async () => {
+  // Firebase configuration incomplete - messaging disabled
+  if (!import.meta.env.VITE_FIREBASE_VAPID_KEY || import.meta.env.VITE_FIREBASE_VAPID_KEY === 'your_vapid_key') {
+    console.log('Firebase messaging disabled - incomplete configuration');
+    return;
+  }
+
   try {
     const currentToken = await getToken(messaging, { vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY });
     if (currentToken) {

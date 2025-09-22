@@ -1,5 +1,5 @@
 import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 import * as diff from 'json-diff';
 
 export const remoteConfigListener = functions.remoteConfig.onUpdate(async (versionMetadata) => {

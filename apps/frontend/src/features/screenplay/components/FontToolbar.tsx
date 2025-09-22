@@ -1,25 +1,18 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Palette, Highlighter, Eraser
-} from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Palette, Highlighter, Eraser } from "lucide-react";
 
+interface FontToolbarProps {
+    handleColorChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    handleHighlightChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
 
-const FontToolbar: React.FC = () => {
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    document.execCommand('foreColor', false, e.target.value);
-  };
-
-  const handleHighlightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    document.execCommand('hiliteColor', false, e.target.value);
-  };
-
+export function FontToolbar({ handleColorChange, handleHighlightChange }: FontToolbarProps) {
   return (
     <TooltipProvider>
       <div className="flex items-center space-x-2 border-r pr-2">
@@ -135,6 +128,4 @@ const FontToolbar: React.FC = () => {
       </div>
     </TooltipProvider>
   );
-};
-
-export default FontToolbar;
+}

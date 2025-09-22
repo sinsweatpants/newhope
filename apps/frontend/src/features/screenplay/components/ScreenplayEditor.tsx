@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sparkles, X, Loader2, Sun, Moon, Copy, FileText,
-  Bold, Italic, Underline, AlignLeft, AlignCenter,
-  AlignRight,
-  Palette,
-  Search, Replace, Save, FolderOpen, Printer, Eye, Settings,
-  Download, Upload,
-  FilePlus, Undo, Redo, Scissors,
-  ChevronsRight, Pencil, ChevronDown,
-  BookHeart, Film, MapPin, Camera, Feather, UserSquare,
-  Parentheses, MessageCircle, FastForward, BrainCircuit, NotebookText
+  Sun, Moon
 } from 'lucide-react';
 
 import { ScreenplayCoordinator } from '@shared/screenplay/coordinator';
 import { getFormatStyles } from '@shared/screenplay/formatStyles';
+import { ClipboardToolbar } from './ClipboardToolbar';
+import { EditingToolbar } from './EditingToolbar';
+import { FontToolbar } from './FontToolbar';
+import { ParagraphToolbar } from './ParagraphToolbar';
+import { StylesToolbar } from './StylesToolbar';
+import { FindReplaceDialog } from './FindReplaceDialog';
+import { StylesDialog } from './StylesDialog';
+import { CustomStyle } from '@shared/screenplay/types';
+import { customStylesManager } from '@shared/screenplay/customStylesManager';
 
 // ============================================================================
 // Constants
@@ -52,6 +52,14 @@ const ScreenplayEditor = () => {
   const [selectedSize, setSelectedSize] = useState('12pt');
   const [documentStats, setDocumentStats] = useState({ pages: 1, words: 0 });
   const layoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Toolbar states
+  const [isFindReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [isFormatPainterActive, setFormatPainterActive] = useState(false);
+  const [showFormatting, setShowFormatting] = useState(false);
+  const [isStylesDialogOpen, setStylesDialogOpen] = useState(false);
+  const [customStyles, setCustomStyles] = useState<CustomStyle[]>([]);
+
 
   const coordinator = useMemo(() => new ScreenplayCoordinator((type, font, size) => getFormatStyles(type, font, size)), []);
 
@@ -155,6 +163,14 @@ const ScreenplayEditor = () => {
     };
   }, [layoutAndPaginate]);
 
+  // Toolbar handlers
+  const toggleFormatPainter = () => setFormatPainterActive(prev => !prev);
+  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => document.execCommand('foreColor', false, e.target.value);
+  const handleHighlightChange = (e: React.ChangeEvent<HTMLInputElement>) => document.execCommand('hiliteColor', false, e.target.value);
+  const toggleShowFormatting = () => setShowFormatting(prev => !prev);
+  const applyStyle = (styleName: string) => document.execCommand('formatBlock', false, styleName);
+  const onStylesUpdate = (newStyles: CustomStyle[]) => setCustomStyles(newStyles);
+
 
   return (
     <div className={`flex flex-col h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 text-gray-300' : 'bg-gray-200 text-gray-800'}`} dir="rtl">
@@ -232,7 +248,7 @@ const ScreenplayEditor = () => {
 
       {/* Header */}
       <div className="flex-shrink-0 px-4 py-2 shadow-sm z-30 bg-gray-100 dark:bg-gray-700">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-2">
             <h1 className="text-lg font-bold" style={{fontFamily: 'Amiri'}}>محرر السيناريو</h1>
             <div className="flex items-center gap-2">
                  <select value={selectedFont} onChange={e => setSelectedFont(e.target.value)} className="p-1 border rounded bg-white dark:bg-gray-600">
@@ -243,6 +259,19 @@ const ScreenplayEditor = () => {
                     {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
             </div>
+        </div>
+        <div className="flex items-center space-x-2">
+            <ClipboardToolbar isFormatPainterActive={isFormatPainterActive} toggleFormatPainter={toggleFormatPainter} />
+            <FontToolbar handleColorChange={handleColorChange} handleHighlightChange={handleHighlightChange} />
+            <ParagraphToolbar showFormatting={showFormatting} toggleShowFormatting={toggleShowFormatting} />
+            <StylesToolbar 
+                customStyles={customStyles} 
+                applyStyle={applyStyle} 
+                setStylesDialogOpen={setStylesDialogOpen} 
+                isStylesDialogOpen={isStylesDialogOpen}
+                onStylesUpdate={onStylesUpdate}
+            />
+            <EditingToolbar setFindReplaceOpen={setFindReplaceOpen} />
         </div>
       </div>
 
@@ -268,6 +297,28 @@ const ScreenplayEditor = () => {
       <div className="flex-shrink-0 px-4 py-1.5 text-sm border-t bg-gray-100 dark:bg-gray-700">
         <span>{documentStats.pages} صفحة</span> | <span>{documentStats.words} كلمة</span>
       </div>
+
+      <FindReplaceDialog 
+        isOpen={isFindReplaceOpen} 
+        onClose={() => setFindReplaceOpen(false)} 
+        onFind={(term) => {
+          // Implement find logic
+        }}
+        onReplace={(term, replacement) => {
+          // Implement replace logic
+        }}
+        onReplaceAll={(term, replacement) => {
+          // Implement replace all logic
+        }}
+      />
+      <StylesDialog 
+        isOpen={isStylesDialogOpen} 
+        onClose={() => setStylesDialogOpen(false)} 
+        onStylesUpdate={() => {
+          const updatedStyles = customStylesManager.getAllStyles();
+          setCustomStyles(updatedStyles);
+        }}
+      />
     </div>
   );
 };

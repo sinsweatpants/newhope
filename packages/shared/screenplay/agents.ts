@@ -83,7 +83,14 @@ export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStyl
             return { html, processed: true, confidence: 0.9, elementType: "character-dialogue", agentUsed: "CharacterDialogueAgent", originalLine: line, context: ctx };
         }
     }
-    if (ctx.inDialogue) {
+
+    // Check if this is a Syriac dialogue line that should be associated with the last character
+    if (ctx.inDialogue && ctx.lastCharacter) {
+        const syriacPattern = /^[\s•]*([^\u0600-\u06FF\s]+[^\(\)]*)\s*\(\s*([^)]+)\s*\)\s*$/;
+        if (syriacPattern.test(line)) {
+            // Let SyriacDialogueAgent handle this
+            return null;
+        }
         return { html: compileHtml("div", "dialogue", line, getFormatStylesFn), processed: true, confidence: 0.8, elementType: "continued-dialogue", agentUsed: "CharacterDialogueAgent", originalLine: line, context: ctx };
     }
     return null;
@@ -112,6 +119,61 @@ export const DirectorNotesAgent: FormattingAgent = (line, ctx, getFormatStylesFn
     const stripped = line.replace(/^\s*\(|\)\s*$/g, "").trim();
     const html = compileHtml("div", `parenthetical`, `(${stripped})`, getFormatStylesFn);
     return { html, processed: true, confidence: 0.85, elementType: "parenthetical", agentUsed: "DirectorNotesAgent", originalLine: line, context: ctx };
+  }
+  return null;
+}
+
+export const StageDirectionsAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+  if (Patterns.stageDirections.test(line)) {
+    const cleanLine = line.replace(/^\s*-\s*/, "").trim();
+    const html = compileHtml("div", "stage-direction", cleanLine, getFormatStylesFn);
+    ctx.inDialogue = false;
+    return { html, processed: true, confidence: 0.9, elementType: "stage-direction", agentUsed: "StageDirectionsAgent", originalLine: line, context: ctx };
+  }
+  return null;
+}
+
+export const SyriacDialogueAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+  // Check for Syriac text with Arabic translation in parentheses
+  const syriacPattern = /^[\s•]*([^\u0600-\u06FF\s]+[^\(\)]*)\s*\(\s*([^)]+)\s*\)\s*$/;
+  const match = line.match(syriacPattern);
+
+  if (match) {
+    const syriacText = match[1].trim();
+    const arabicTranslation = match[2].trim();
+
+    const container = document.createElement('div');
+    container.className = 'syriac-dialogue-container';
+
+    // Apply base styles
+    const baseStyles = getFormatStylesFn ? getFormatStylesFn('syriac-dialogue-container') || {} : {};
+    Object.assign(container.style, baseStyles);
+
+    const syriacDiv = document.createElement('div');
+    syriacDiv.className = 'syriac-text';
+    const syriacStyles = getFormatStylesFn ? getFormatStylesFn('syriac-text') || {} : {};
+    Object.assign(syriacDiv.style, syriacStyles);
+    syriacDiv.textContent = syriacText;
+
+    const translationDiv = document.createElement('div');
+    translationDiv.className = 'arabic-translation';
+    const translationStyles = getFormatStylesFn ? getFormatStylesFn('arabic-translation') || {} : {};
+    Object.assign(translationDiv.style, translationStyles);
+    translationDiv.textContent = `(${arabicTranslation})`;
+
+    container.appendChild(syriacDiv);
+    container.appendChild(translationDiv);
+
+    return { html: container.outerHTML, processed: true, confidence: 0.95, elementType: "syriac-dialogue", agentUsed: "SyriacDialogueAgent", originalLine: line, context: ctx };
+  }
+  return null;
+}
+
+export const CutTransitionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+  if (Patterns.transitionCut.test(line)) {
+    const html = compileHtml("div", "cut-transition", line.trim(), getFormatStylesFn);
+    ctx.inDialogue = false;
+    return { html, processed: true, confidence: 1.0, elementType: "cut-transition", agentUsed: "CutTransitionAgent", originalLine: line, context: ctx };
   }
   return null;
 }

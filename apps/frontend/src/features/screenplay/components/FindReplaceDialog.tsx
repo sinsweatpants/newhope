@@ -18,7 +18,7 @@ interface FindReplaceDialogProps {
   onReplaceAll: (term: string, replacement: string) => void;
 }
 
-const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
+export const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
   isOpen,
   onClose,
   onFind,
@@ -79,5 +79,3 @@ const FindReplaceDialog: React.FC<FindReplaceDialogProps> = ({
     </Dialog>
   );
 };
-
-export default FindReplaceDialog;

@@ -1,0 +1,14 @@
+{
+  "extends": "../../configs/tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../../packages/shared/*"]
+    }
+  },
+  "include": [
+    "src",
+    "../../packages/shared"
+  ]
+}
