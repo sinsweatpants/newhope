@@ -9,7 +9,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { customStylesManager, CustomStyle } from '@shared/CustomStylesManager';
+import { customStylesManager, CustomStyle } from '@/shared/CustomStylesManager';
 
 
 interface StylesDialogProps {

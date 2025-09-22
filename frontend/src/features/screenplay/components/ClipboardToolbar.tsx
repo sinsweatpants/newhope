@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Scissors, Clipboard, ClipboardPaste, Brush } from 'lucide-react';
 import {

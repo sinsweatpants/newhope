@@ -22,13 +22,21 @@ export function log(message: string, source = "express") {
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
-    hmr: { server },
+    hmr: false, // Disable HMR to avoid localhost issues
     allowedHosts: true as const,
   };
 
   const vite = await createViteServer({
-    ...viteConfig,
     configFile: false,
+    root: path.resolve(import.meta.dirname, "..", "frontend"),
+    plugins: [
+      await import("@vitejs/plugin-react").then(m => m.default())
+    ],
+    resolve: {
+      alias: {
+        "@": path.resolve(import.meta.dirname, "..", "frontend", "src"),
+      },
+    },
     customLogger: {
       ...viteLogger,
       error: (msg, options) => {
