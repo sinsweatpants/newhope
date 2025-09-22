@@ -187,6 +187,12 @@ class OCRService {
     options: OCROptions
   ): Promise<OCRResult> {
     try {
+      // Check if we're in a browser environment
+      if (typeof document === 'undefined') {
+        // In Node.js, delegate to backend processing
+        return await this.invokeBackendFallback(file, options, 'Canvas rendering not available in Node.js');
+      }
+
       const pdfjsLib = await this.loadPdfjs();
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -393,7 +399,7 @@ class OCRService {
         format: 'text'
       });
 
-      const text = this.cleanExtractedText(result?.text || '');
+      const text = performanceOptimizer.optimizeTextProcessing(result?.text || '');
       const confidence = typeof result?.confidence === 'number' ? result.confidence : 0.65;
 
       if (text.trim().length > 0) {
@@ -546,10 +552,28 @@ class OCRService {
    * Get file hash for caching
    */
   private async getFileHash(file: File): Promise<string> {
-    const buffer = await file.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    try {
+      const buffer = await file.arrayBuffer();
+
+      // Check if crypto.subtle is available (browser environment)
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } else {
+        // Fallback for Node.js environment - use simple hash
+        const bytes = new Uint8Array(buffer);
+        let hash = 0;
+        for (let i = 0; i < bytes.length; i++) {
+          hash = ((hash << 5) - hash) + bytes[i];
+          hash = hash & hash; // Convert to 32bit integer
+        }
+        return Math.abs(hash).toString(16);
+      }
+    } catch (error) {
+      // Fallback to filename + size + timestamp
+      return `${file.name}-${file.size}-${Date.now()}`;
+    }
   }
 
   /**

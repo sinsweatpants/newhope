@@ -27,47 +27,60 @@ export function compileHtml(tag: string, cls: string, text: string, getFormatSty
   return div.outerHTML;
 }
 
+class BaseAgent implements FormattingAgent {
+  constructor() {}
+
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    throw new Error("Method 'execute' must be implemented.");
+  }
+}
+
 // Formatting Agents
-export const BasmalaAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  const trimmedLine = line.trim(); // Trim the line before testing the pattern
-  if (Patterns.basmala.test(trimmedLine)) {
-    const html = compileHtml("div", "basmala", trimmedLine, getFormatStylesFn);
-    ctx.inDialogue = false;
-    return { html, processed: true, confidence: 1.0, elementType: "basmala", agentUsed: "BasmalaAgent", originalLine: line, context: ctx };
-  }
-  return null;
-}
-
-export const SceneHeaderAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  const trimmedLine = line.trim();
-  const m2 = trimmedLine.match(/^(مشهد\s*\d+)\s*[-–—:،]?\s*(.*)$/i);
-  if (m2) {
-    const head = m2[1].trim();
-    const rest = m2[2].trim();
-    if (rest && Patterns.sceneHeader2.time.test(rest) && Patterns.sceneHeader2.inOut.test(rest)) {
-      const container = document.createElement('div');
-      container.className = 'scene-header-top-line';
-      const part1 = document.createElement('span');
-      part1.className = 'scene-header-1';
-      part1.textContent = head;
-      const part2 = document.createElement('span');
-      part2.className = 'scene-header-2';
-      part2.textContent = rest;
-      container.appendChild(part1);
-      container.appendChild(part2);
+export class BasmalaAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    const trimmedLine = line.trim();
+    if (Patterns.basmala.test(trimmedLine)) {
+      const html = compileHtml("div", "basmala", trimmedLine, getFormatStylesFn);
       ctx.inDialogue = false;
-      return { html: container.outerHTML, processed: true, confidence: 0.99, elementType: "scene-header-combined", agentUsed: "SceneHeaderAgent", originalLine: line, context: ctx };
+      return { html, processed: true, confidence: 1.0, elementType: "basmala", agentUsed: "BasmalaAgent", originalLine: line, context: ctx };
     }
+    return null;
   }
-  if (Patterns.sceneHeader3.test(trimmedLine)) {
-    const html = compileHtml("div", "scene-header-3", trimmedLine, getFormatStylesFn);
-    ctx.inDialogue = false;
-    return { html, processed: true, confidence: 0.90, elementType: "scene-header-3", agentUsed: "SceneHeaderAgent", originalLine: line, context: ctx };
-  }
-  return null;
 }
 
-export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+export class SceneHeaderAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    const trimmedLine = line.trim();
+    const m2 = trimmedLine.match(/^(مشهد\s*\d+)\s*[-–—:،]?\s*(.*)$/i);
+    if (m2) {
+      const head = m2[1].trim();
+      const rest = m2[2].trim();
+      if (rest && Patterns.sceneHeader2.time.test(rest) && Patterns.sceneHeader2.inOut.test(rest)) {
+        const container = document.createElement('div');
+        container.className = 'scene-header-top-line';
+        const part1 = document.createElement('span');
+        part1.className = 'scene-header-1';
+        part1.textContent = head;
+        const part2 = document.createElement('span');
+        part2.className = 'scene-header-2';
+        part2.textContent = rest;
+        container.appendChild(part1);
+        container.appendChild(part2);
+        ctx.inDialogue = false;
+        return { html: container.outerHTML, processed: true, confidence: 0.99, elementType: "scene-header-combined", agentUsed: "SceneHeaderAgent", originalLine: line, context: ctx };
+      }
+    }
+    if (Patterns.sceneHeader3.test(trimmedLine)) {
+      const html = compileHtml("div", "scene-header-3", trimmedLine, getFormatStylesFn);
+      ctx.inDialogue = false;
+      return { html, processed: true, confidence: 0.90, elementType: "scene-header-3", agentUsed: "SceneHeaderAgent", originalLine: line, context: ctx };
+    }
+    return null;
+  }
+}
+
+export class CharacterDialogueAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
     if (!line.trim()) {
         ctx.inDialogue = false;
         return { html: '<div><br></div>', processed: true, confidence: 1.0, elementType: "empty-line", agentUsed: "CharacterDialogueAgent", originalLine: line, context: ctx };
@@ -99,10 +112,11 @@ export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStyl
         }
     }
     return null;
+  }
 }
 
-export const ActionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-    // A line is an action if it starts with a keyword OR a bullet, BUT it's NOT a character line.
+export class ActionAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
     if (Patterns.actionKeywords.test(line) || (Patterns.actionBullet.test(line) && !Patterns.characterNames.test(line))) {
         const cleanedLine = line.replace(Patterns.actionBullet, "").trim();
         const html = compileHtml("div", `action`, cleanedLine, getFormatStylesFn);
@@ -110,75 +124,82 @@ export const ActionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
         return { html, processed: true, confidence: 0.85, elementType: `action`, agentUsed: "ActionAgent", originalLine: line, context: ctx };
     }
     return null;
+  }
 }
 
-export const TransitionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
+export class TransitionAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
     if (Patterns.transitions.test(line)) {
         const html = compileHtml("div", `transition`, line, getFormatStylesFn);
         ctx.inDialogue = false;
         return { html, processed: true, confidence: 0.9, elementType: "transition", agentUsed: "TransitionAgent", originalLine: line, context: ctx };
     }
     return null;
-}
-
-export const DirectorNotesAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  if (Patterns.directorNotes.test(line)) {
-    const stripped = line.replace(/^\s*\(|\)\s*$/g, "").trim();
-    const html = compileHtml("div", `parenthetical`, `(${stripped})`, getFormatStylesFn);
-    return { html, processed: true, confidence: 0.85, elementType: "parenthetical", agentUsed: "DirectorNotesAgent", originalLine: line, context: ctx };
   }
-  return null;
 }
 
-// StageDirectionsAgent is removed as its functionality is merged into ActionAgent
-
-export const SyriacDialogueAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  // Check for Syriac text with Arabic translation in parentheses
-  const syriacPattern = /^[\s•]*([^\u0600-\u06FF\s]+[^\(\)]*)\s*\(\s*([^)]+)\s*\)\s*$/;
-  const match = line.match(syriacPattern);
-
-  if (match) {
-    const syriacText = match[1].trim();
-    const arabicTranslation = match[2].trim();
-
-    const container = document.createElement('div');
-    container.className = 'syriac-dialogue-container';
-
-    // Apply base styles
-    const baseStyles = getFormatStylesFn ? getFormatStylesFn('syriac-dialogue-container') || {} : {};
-    Object.assign(container.style, baseStyles);
-
-    const syriacDiv = document.createElement('div');
-    syriacDiv.className = 'syriac-text';
-    const syriacStyles = getFormatStylesFn ? getFormatStylesFn('syriac-text') || {} : {};
-    Object.assign(syriacDiv.style, syriacStyles);
-    syriacDiv.textContent = syriacText;
-
-    const translationDiv = document.createElement('div');
-    translationDiv.className = 'arabic-translation';
-    const translationStyles = getFormatStylesFn ? getFormatStylesFn('arabic-translation') || {} : {};
-    Object.assign(translationDiv.style, translationStyles);
-    translationDiv.textContent = `(${arabicTranslation})`;
-
-    container.appendChild(syriacDiv);
-    container.appendChild(translationDiv);
-
-    return { html: container.outerHTML, processed: true, confidence: 0.95, elementType: "syriac-dialogue", agentUsed: "SyriacDialogueAgent", originalLine: line, context: ctx };
+export class DirectorNotesAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    if (Patterns.directorNotes.test(line)) {
+      const stripped = line.replace(/^\s*\(|\)\s*$/g, "").trim();
+      const html = compileHtml("div", `parenthetical`, `(${stripped})`, getFormatStylesFn);
+      return { html, processed: true, confidence: 0.85, elementType: "parenthetical", agentUsed: "DirectorNotesAgent", originalLine: line, context: ctx };
+    }
+    return null;
   }
-  return null;
 }
 
-export const CutTransitionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  if (Patterns.transitionCut.test(line)) {
-    const html = compileHtml("div", "cut-transition", line.trim(), getFormatStylesFn);
+export class SyriacDialogueAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    const syriacPattern = /^[\s•]*([^\u0600-\u06FF\s]+[^\(\)]*)\s*\(\s*([^)]+)\s*\)\s*$/;
+    const match = line.match(syriacPattern);
+
+    if (match) {
+      const syriacText = match[1].trim();
+      const arabicTranslation = match[2].trim();
+
+      const container = document.createElement('div');
+      container.className = 'syriac-dialogue-container';
+
+      const baseStyles = getFormatStylesFn ? getFormatStylesFn('syriac-dialogue-container') || {} : {};
+      Object.assign(container.style, baseStyles);
+
+      const syriacDiv = document.createElement('div');
+      syriacDiv.className = 'syriac-text';
+      const syriacStyles = getFormatStylesFn ? getFormatStylesFn('syriac-text') || {} : {};
+      Object.assign(syriacDiv.style, syriacStyles);
+      syriacDiv.textContent = syriacText;
+
+      const translationDiv = document.createElement('div');
+      translationDiv.className = 'arabic-translation';
+      const translationStyles = getFormatStylesFn ? getFormatStylesFn('arabic-translation') || {} : {};
+      Object.assign(translationDiv.style, translationStyles);
+      translationDiv.textContent = `(${arabicTranslation})`;
+
+      container.appendChild(syriacDiv);
+      container.appendChild(translationDiv);
+
+      return { html: container.outerHTML, processed: true, confidence: 0.95, elementType: "syriac-dialogue", agentUsed: "SyriacDialogueAgent", originalLine: line, context: ctx };
+    }
+    return null;
+  }
+}
+
+export class CutTransitionAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    if (Patterns.transitionCut.test(line)) {
+      const html = compileHtml("div", "cut-transition", line.trim(), getFormatStylesFn);
+      ctx.inDialogue = false;
+      return { html, processed: true, confidence: 1.0, elementType: "cut-transition", agentUsed: "CutTransitionAgent", originalLine: line, context: ctx };
+    }
+    return null;
+  }
+}
+
+export class DefaultAgent extends BaseAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+    const html = compileHtml("div", "action", line, getFormatStylesFn);
     ctx.inDialogue = false;
-    return { html, processed: true, confidence: 1.0, elementType: "cut-transition", agentUsed: "CutTransitionAgent", originalLine: line, context: ctx };
+    return { html, processed: true, confidence: 0.1, elementType: 'action', agentUsed: "DefaultAgent", originalLine: line, context: ctx };
   }
-  return null;
-}
-
-export const DefaultAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  const html = compileHtml("div", "action", line, getFormatStylesFn);
-  ctx.inDialogue = false;
-  return { html, processed: true, confidence: 0.1, elementType: 'action', agentUsed: "DefaultAgent", originalLine: line, context: ctx };
 }

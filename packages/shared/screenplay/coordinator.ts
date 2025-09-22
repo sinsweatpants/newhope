@@ -10,24 +10,24 @@ export class ScreenplayCoordinator {
   constructor(getFormatStylesFn: (formatType: string, font?: string, size?: string) => React.CSSProperties) {
     this.getFormatStylesFn = getFormatStylesFn;
     this.agents = [
-      BasmalaAgent,
-      CutTransitionAgent,
-      TransitionAgent,
-      SceneHeaderAgent,
-      DirectorNotesAgent,
-      CharacterDialogueAgent, 
-      ActionAgent,            
-      SyriacDialogueAgent,
-      DefaultAgent
+      new BasmalaAgent(),
+      new CutTransitionAgent(),
+      new TransitionAgent(),
+      new SceneHeaderAgent(),
+      new DirectorNotesAgent(),
+      new CharacterDialogueAgent(),
+      new ActionAgent(),
+      new SyriacDialogueAgent(),
+      new DefaultAgent()
     ];
   }
 
-  processLine(line: string, context: AgentContext = {}): AgentResult {
-    for (const fn of this.agents) {
-      const res = fn(line, context, this.getFormatStylesFn);
+  processLine(line: string, context: Agent.AgentContext = {}): AgentResult {
+    for (const agent of this.agents) {
+      const res = agent.execute(line, context, this.getFormatStylesFn);
       if (res?.processed) return res;
     }
-    return DefaultAgent(line, context, this.getFormatStylesFn) as AgentResult;
+    return new DefaultAgent().execute(line, context, this.getFormatStylesFn) as AgentResult;
   }
 
   // Helper to decide if an ENTER is needed, now using correct element types

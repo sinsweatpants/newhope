@@ -1,7 +1,21 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import sharp from 'sharp';
-import { createWorker, type Worker } from 'tesseract.js';
+
+// Dynamic imports for optional dependencies
+let sharp: any = null;
+let tesseractJs: any = null;
+
+try {
+  sharp = require('sharp');
+} catch (error) {
+  console.warn('Sharp not available');
+}
+
+try {
+  tesseractJs = require('tesseract.js');
+} catch (error) {
+  console.warn('Tesseract.js not available');
+}
 
 interface OCRBackendRequest {
   buffer: Buffer;
@@ -323,7 +337,10 @@ export class OCRBackendService {
       return this.worker;
     }
 
-    this.worker = await createWorker();
+    if (!tesseractJs) {
+      throw new Error('Tesseract.js not available');
+    }
+    this.worker = await tesseractJs.createWorker();
     await this.worker.load();
     await this.worker.loadLanguage(language);
     await this.worker.initialize(language);
@@ -332,13 +349,18 @@ export class OCRBackendService {
 
   private async getPdfModule(): Promise<any> {
     if (!this.pdfModulePromise) {
-      this.pdfModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((module) => {
-        const pdfjs = module.default ?? module;
-        if (pdfjs.GlobalWorkerOptions) {
-          pdfjs.GlobalWorkerOptions.workerSrc = undefined;
-        }
-        return pdfjs;
-      });
+      this.pdfModulePromise = import('pdfjs-dist/legacy/build/pdf.mjs')
+        .then((module) => {
+          const pdfjs = module.default ?? module;
+          if (pdfjs.GlobalWorkerOptions) {
+            pdfjs.GlobalWorkerOptions.workerSrc = undefined;
+          }
+          return pdfjs;
+        })
+        .catch((error) => {
+          console.warn('PDF.js not available:', error.message);
+          throw new Error('PDF.js dependency not available');
+        });
     }
 
     return this.pdfModulePromise;
@@ -346,7 +368,12 @@ export class OCRBackendService {
 
   private async getScribeModule(): Promise<any> {
     if (!this.scribeModulePromise) {
-      this.scribeModulePromise = import('scribe.js-ocr').then((module) => module.default ?? module);
+      this.scribeModulePromise = import('scribe.js-ocr')
+        .then((module) => module.default ?? module)
+        .catch((error) => {
+          console.warn('Scribe.js not available:', error.message);
+          throw new Error('Scribe.js dependency not available');
+        });
     }
 
     return this.scribeModulePromise;

@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupVite, log } from "./vite"; // removed unused serveStatic
 import minimist from 'minimist';
 import * as functions from 'firebase-functions';
 import admin from 'firebase-admin';

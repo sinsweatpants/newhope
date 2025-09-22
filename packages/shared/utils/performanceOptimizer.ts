@@ -93,19 +93,22 @@ class PerformanceOptimizer {
    * Initialize performance monitoring
    */
   private initializeMonitoring(): void {
-    // Memory monitoring
-    this.startMemoryMonitoring();
+    // Only initialize browser-specific monitoring in browser environment
+    if (typeof window !== 'undefined') {
+      // Memory monitoring
+      this.startMemoryMonitoring();
 
-    // FPS monitoring
-    this.startFPSMonitoring();
+      // FPS monitoring
+      this.startFPSMonitoring();
 
-    // Network monitoring
-    this.startNetworkMonitoring();
+      // Network monitoring
+      this.startNetworkMonitoring();
 
-    // User interaction monitoring
-    this.startInteractionMonitoring();
+      // User interaction monitoring
+      this.startInteractionMonitoring();
+    }
 
-    // Task queue monitoring
+    // Task queue monitoring (works in both environments)
     this.startTaskQueueMonitoring();
   }
 
@@ -138,6 +141,11 @@ class PerformanceOptimizer {
    * Start FPS monitoring
    */
   private startFPSMonitoring(): void {
+    if (typeof requestAnimationFrame === 'undefined') {
+      // Not in browser environment, skip FPS monitoring
+      return;
+    }
+
     let lastFrameTime = performance.now();
     let frameCount = 0;
     let frameDrops = 0;
@@ -182,6 +190,11 @@ class PerformanceOptimizer {
    * Start network monitoring
    */
   private startNetworkMonitoring(): void {
+    if (typeof window === 'undefined' || typeof window.fetch === 'undefined') {
+      // Not in browser environment or fetch not available
+      return;
+    }
+
     // Intercept fetch requests
     const originalFetch = window.fetch;
     window.fetch = async (...args) => {
@@ -229,6 +242,11 @@ class PerformanceOptimizer {
    * Start user interaction monitoring
    */
   private startInteractionMonitoring(): void {
+    if (typeof document === 'undefined') {
+      // Not in browser environment
+      return;
+    }
+
     let lastInputTime = 0;
 
     // Input latency monitoring
@@ -244,10 +262,12 @@ class PerformanceOptimizer {
     document.addEventListener('click', (event) => {
       const startTime = performance.now();
 
-      requestAnimationFrame(() => {
-        const endTime = performance.now();
-        this.metrics.userInteractionMetrics.clickResponsiveness = endTime - startTime;
-      });
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(() => {
+          const endTime = performance.now();
+          this.metrics.userInteractionMetrics.clickResponsiveness = endTime - startTime;
+        });
+      }
     });
 
     // Scroll performance monitoring
@@ -441,7 +461,18 @@ class PerformanceOptimizer {
       const callbacks = Array.from(this.renderCallbacks);
       this.renderCallbacks.clear();
 
-      requestAnimationFrame(() => {
+      if (typeof requestAnimationFrame !== 'undefined') {
+        requestAnimationFrame(() => {
+          callbacks.forEach(callback => {
+            try {
+              callback();
+            } catch (error) {
+              console.warn('[PerformanceOptimizer] Render callback error:', error);
+            }
+          });
+        });
+      } else {
+        // Fallback for Node.js - execute immediately
         callbacks.forEach(callback => {
           try {
             callback();
@@ -449,7 +480,7 @@ class PerformanceOptimizer {
             console.warn('[PerformanceOptimizer] Render callback error:', error);
           }
         });
-      });
+      }
     }
   }
 
@@ -538,6 +569,13 @@ class PerformanceOptimizer {
     } = {}
   ): Promise<Blob> {
     if (!this.config.enableImageOptimization) {
+      return imageData;
+    }
+
+    // Check if we're in a browser environment
+    if (typeof document === 'undefined' || typeof Image === 'undefined') {
+      // In Node.js, return the original image without optimization
+      console.warn('[PerformanceOptimizer] Image optimization not available in Node.js environment');
       return imageData;
     }
 

@@ -317,7 +317,7 @@ class DynamicLoader {
       'tesseract.js': () => import('tesseract.js'),
       'pdfjs-dist': () => import('pdfjs-dist'),
       'mammoth': () => import('mammoth'),
-      'scribe.js-ocr': () => import('scribe.js-ocr'),
+      'scribe.js-ocr': () => this.safeImportScribe(),
       'sharp': () => import('sharp'),
       'html2canvas': () => import('html2canvas'),
       'jspdf': () => import('jspdf'),
@@ -333,6 +333,25 @@ class DynamicLoader {
     };
 
     return importMap[moduleId] || null;
+  }
+
+  /**
+   * Safely import scribe.js-ocr with fallback handling
+   */
+  async safeImportScribe(): Promise<any> {
+    try {
+      // Only import scribe.js-ocr when actually needed
+      const module = await import('scribe.js-ocr');
+      return module;
+    } catch (error) {
+      console.warn('[DynamicLoader] Scribe.js-ocr import failed, using fallback:', error);
+      // Return a mock implementation for scribe.js-ocr
+      return {
+        recognize: async () => {
+          throw new Error('Scribe.js-ocr is not available in this environment');
+        }
+      };
+    }
   }
 
   /**
@@ -501,7 +520,7 @@ export const DynamicImports = {
   async loadScribe() {
     return await dynamicLoader.loadModule(
       'scribe.js-ocr',
-      () => import('scribe.js-ocr'),
+      () => dynamicLoader.safeImportScribe(),
       { priority: 'normal' }
     );
   },

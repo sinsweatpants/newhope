@@ -166,28 +166,42 @@ class FileReaderService {
    * Extract text from PDF using PDF.js
    */
   private async extractPDFText(file: File): Promise<string> {
-    // Dynamic import to avoid bundle bloat
-    const pdfjsLib = await import('pdfjs-dist');
+    try {
+      // Use dynamic import with explicit check
+      const pdfjsModule = await this.loadPdfJsModule();
 
-    // Set worker path
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      // Set worker path
+      pdfjsModule.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsModule.getDocument({ data: arrayBuffer }).promise;
 
-    let fullText = '';
+      let fullText = '';
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        fullText += pageText + '\n';
+      }
+
+      return fullText;
+    } catch (error) {
+      console.warn('PDF.js not available, falling back to OCR');
+      throw new Error('PDF.js dependency not available');
     }
+  }
 
-    return fullText;
+  private async loadPdfJsModule(): Promise<any> {
+    try {
+      const module = await import('pdfjs-dist');
+      return module.default || module;
+    } catch (error) {
+      throw new Error('PDF.js module not available');
+    }
   }
 
   /**
@@ -225,7 +239,7 @@ class FileReaderService {
   ): Promise<FileProcessingResult> {
     try {
       // Dynamic import for mammoth
-      const mammoth = await import('mammoth');
+      const mammoth = await this.loadMammothModule();
 
       const arrayBuffer = await file.arrayBuffer();
       const result = await mammoth.extractRawText({ arrayBuffer });
@@ -241,7 +255,17 @@ class FileReaderService {
         success: true
       };
     } catch (error) {
-      throw new Error(`DOCX processing failed: ${error}`);
+      console.warn('Mammoth library not available');
+      throw new Error(`DOCX processing failed: ${error instanceof Error ? error.message : error}`);
+    }
+  }
+
+  private async loadMammothModule(): Promise<any> {
+    try {
+      const module = await import('mammoth');
+      return module.default || module;
+    } catch (error) {
+      throw new Error('Mammoth module not available');
     }
   }
 

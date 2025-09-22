@@ -44,7 +44,6 @@ abstract class BaseAgent implements FormattingAgent {
   constructor(name: string, capabilities: AgentCapabilities) {
     this.name = name;
     this.capabilities = capabilities;
-    this.initializePatterns();
   }
 
   abstract initializePatterns(): void;
@@ -167,6 +166,7 @@ export class BasmalaAgent extends BaseAgent {
       contextAware: false,
       mlEnhanced: false
     });
+    this.initializePatterns();
   }
 
   initializePatterns(): void {
@@ -222,7 +222,7 @@ export class BasmalaAgent extends BaseAgent {
  * Scene Header Agent - Handles scene transitions and headers
  */
 export class SceneHeaderAgent extends BaseAgent {
-  private sceneKeywords = ['ليل', 'نهار', 'صباح', 'مساء', 'فجر', 'داخلي', 'خارجي'];
+  private sceneKeywords: string[] = ['ليل', 'نهار', 'صباح', 'مساء', 'فجر', 'داخلي', 'خارجي'];
 
   constructor() {
     super('SceneHeaderAgent', {
@@ -232,6 +232,7 @@ export class SceneHeaderAgent extends BaseAgent {
       contextAware: true,
       mlEnhanced: true
     });
+    this.initializePatterns();
   }
 
   initializePatterns(): void {
@@ -320,6 +321,7 @@ export class CharacterDialogueAgent extends BaseAgent {
       contextAware: true,
       mlEnhanced: true
     });
+    this.initializePatterns();
   }
 
   initializePatterns(): void {
@@ -450,6 +452,7 @@ export class ActionAgent extends BaseAgent {
       contextAware: true,
       mlEnhanced: true
     });
+    this.initializePatterns();
   }
 
   initializePatterns(): void {
@@ -517,6 +520,7 @@ export class ParentheticalAgent extends BaseAgent {
       contextAware: false,
       mlEnhanced: false
     });
+    this.initializePatterns();
   }
 
   initializePatterns(): void {
@@ -580,8 +584,9 @@ export class TransitionAgent extends BaseAgent {
       specializations: ['transition'],
       fallbackSupport: true,
       contextAware: true,
-      mlEnhanced: false
+      mlEnhanced: true
     });
+    this.initializePatterns();
   }
 
   initializePatterns(): void {

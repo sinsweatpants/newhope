@@ -18,7 +18,9 @@ export interface AgentResult {
   context: AgentContext;
 }
 
-export type FormattingAgent = (line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties) => AgentResult | null;
+export interface FormattingAgent {
+  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null;
+}
 
 export const ActionType = {
   Movement: "movement",

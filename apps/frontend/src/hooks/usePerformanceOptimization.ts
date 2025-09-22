@@ -146,4 +146,311 @@ export function usePerformanceOptimization(config?: Partial<PerformanceConfig>) 
   /**
    * Schedule a task with priority
    */
-  const scheduleTask = useCallback(async <T>(\n    id: string,\n    task: () => Promise<T> | T,\n    priority: 'high' | 'normal' | 'low' = 'normal'\n  ): Promise<T> => {\n    if (!defaultConfig.enableTaskQueuing) {\n      return await task();\n    }\n\n    return await performanceOptimizer.addTask(id, task, {\n      priority,\n      timeout: 30000,\n      maxRetries: 3\n    });\n  }, [defaultConfig.enableTaskQueuing]);\n\n  /**\n   * Schedule a render operation\n   */\n  const scheduleRender = useCallback((callback: () => void) => {\n    if (!defaultConfig.enableRenderOptimization) {\n      callback();\n      return;\n    }\n\n    performanceOptimizer.scheduleRender(callback);\n  }, [defaultConfig.enableRenderOptimization]);\n\n  /**\n   * Trigger memory cleanup\n   */\n  const triggerCleanup = useCallback(async (\n    level: 'warning' | 'critical' | 'emergency' = 'warning'\n  ) => {\n    setIsOptimizing(true);\n    try {\n      await memoryManager.triggerCleanup(level);\n      updateMetrics();\n    } finally {\n      setIsOptimizing(false);\n    }\n  }, [updateMetrics]);\n\n  /**\n   * Preload a module\n   */\n  const preloadModule = useCallback(async (moduleId: string) => {\n    try {\n      await dynamicLoader.preloadModules([moduleId]);\n    } catch (error) {\n      console.warn(`Failed to preload module ${moduleId}:`, error);\n    }\n  }, []);\n\n  /**\n   * Get performance recommendations\n   */\n  const getRecommendations = useCallback(() => {\n    const recommendations: string[] = [];\n\n    if (metrics.memoryUsage > 80) {\n      recommendations.push('استخدام الذاكرة مرتفع - قم بتنظيف البيانات');\n    }\n\n    if (metrics.fps < 30) {\n      recommendations.push('أداء الرسم منخفض - قلل من تعقيد العناصر');\n    }\n\n    if (metrics.taskQueueLength > 50) {\n      recommendations.push('طابور المهام مكتظ - قلل من العمليات المتزامنة');\n    }\n\n    if (metrics.cacheHitRate < 50) {\n      recommendations.push('معدل إصابة التخزين المؤقت منخفض - راجع استراتيجية التخزين');\n    }\n\n    return recommendations;\n  }, [metrics]);\n\n  /**\n   * Performance actions object\n   */\n  const actions: PerformanceActions = {\n    optimizeImage,\n    optimizeText,\n    scheduleTask,\n    scheduleRender,\n    triggerCleanup,\n    preloadModule\n  };\n\n  /**\n   * Auto-optimization effect\n   */\n  useEffect(() => {\n    if (!defaultConfig.enableMemoryMonitoring) return;\n\n    // Auto cleanup when memory usage is high\n    if (metrics.memoryUsage > defaultConfig.memoryThreshold) {\n      triggerCleanup('warning');\n    }\n\n    // Auto cleanup when health score is low\n    if (metrics.healthScore < 50) {\n      triggerCleanup('critical');\n    }\n  }, [metrics, defaultConfig, triggerCleanup]);\n\n  return {\n    metrics,\n    actions,\n    isOptimizing,\n    config: defaultConfig,\n    recommendations: getRecommendations()\n  };\n}\n\n/**\n * Hook for caching with performance optimization\n */\nexport function useOptimizedCache<T>(key: string, defaultValue?: T) {\n  const [value, setValue] = useState<T | undefined>(defaultValue);\n  const [isLoading, setIsLoading] = useState(false);\n\n  /**\n   * Get value from cache\n   */\n  const get = useCallback(async (): Promise<T | undefined> => {\n    setIsLoading(true);\n    try {\n      const cached = await cacheManager.get<T>(key);\n      if (cached !== null) {\n        setValue(cached);\n        return cached;\n      }\n      return defaultValue;\n    } finally {\n      setIsLoading(false);\n    }\n  }, [key, defaultValue]);\n\n  /**\n   * Set value in cache\n   */\n  const set = useCallback(async (\n    newValue: T,\n    options?: {\n      ttl?: number;\n      compress?: boolean;\n      priority?: 'high' | 'normal' | 'low';\n    }\n  ) => {\n    setIsLoading(true);\n    try {\n      await cacheManager.set(key, newValue, options);\n      setValue(newValue);\n    } finally {\n      setIsLoading(false);\n    }\n  }, [key]);\n\n  /**\n   * Remove value from cache\n   */\n  const remove = useCallback(() => {\n    cacheManager.delete(key);\n    setValue(defaultValue);\n  }, [key, defaultValue]);\n\n  /**\n   * Load value on mount\n   */\n  useEffect(() => {\n    get();\n  }, [get]);\n\n  return {\n    value,\n    isLoading,\n    get,\n    set,\n    remove\n  };\n}\n\n/**\n * Hook for dynamic module loading with performance optimization\n */\nexport function useDynamicModule<T>(moduleId: string, importFn: () => Promise<T>) {\n  const [module, setModule] = useState<T | null>(null);\n  const [isLoading, setIsLoading] = useState(false);\n  const [error, setError] = useState<Error | null>(null);\n\n  /**\n   * Load module\n   */\n  const load = useCallback(async () => {\n    if (module || isLoading) return module;\n\n    setIsLoading(true);\n    setError(null);\n\n    try {\n      const loadedModule = await dynamicLoader.loadModule(\n        moduleId,\n        importFn,\n        { priority: 'normal', preload: true }\n      );\n\n      setModule(loadedModule);\n      return loadedModule;\n    } catch (err) {\n      const error = err instanceof Error ? err : new Error('Module loading failed');\n      setError(error);\n      return null;\n    } finally {\n      setIsLoading(false);\n    }\n  }, [moduleId, importFn, module, isLoading]);\n\n  /**\n   * Preload module\n   */\n  const preload = useCallback(async () => {\n    if (module) return;\n\n    try {\n      await dynamicLoader.loadModule(\n        moduleId,\n        importFn,\n        { priority: 'low', preload: true }\n      );\n    } catch (error) {\n      console.warn(`Failed to preload module ${moduleId}:`, error);\n    }\n  }, [moduleId, importFn, module]);\n\n  return {\n    module,\n    isLoading,\n    error,\n    load,\n    preload\n  };\n}\n\n/**\n * Hook for performance monitoring in components\n */\nexport function usePerformanceMonitor(componentName: string) {\n  const renderCountRef = useRef(0);\n  const mountTimeRef = useRef(0);\n  const [renderMetrics, setRenderMetrics] = useState({\n    renderCount: 0,\n    averageRenderTime: 0,\n    mountTime: 0\n  });\n\n  /**\n   * Track component mount\n   */\n  useEffect(() => {\n    mountTimeRef.current = performance.now();\n    performance.mark(`${componentName}-mount-start`);\n\n    return () => {\n      const mountTime = performance.now() - mountTimeRef.current;\n      performance.mark(`${componentName}-mount-end`);\n      performance.measure(\n        `${componentName}-mount`,\n        `${componentName}-mount-start`,\n        `${componentName}-mount-end`\n      );\n\n      console.log(`[Performance] ${componentName} mount time: ${mountTime.toFixed(2)}ms`);\n    };\n  }, [componentName]);\n\n  /**\n   * Track renders\n   */\n  useEffect(() => {\n    const renderStart = performance.now();\n    renderCountRef.current++;\n\n    requestAnimationFrame(() => {\n      const renderTime = performance.now() - renderStart;\n      \n      setRenderMetrics(prev => {\n        const newAverageRenderTime = prev.averageRenderTime === 0\n          ? renderTime\n          : (prev.averageRenderTime + renderTime) / 2;\n\n        return {\n          renderCount: renderCountRef.current,\n          averageRenderTime: newAverageRenderTime,\n          mountTime: performance.now() - mountTimeRef.current\n        };\n      });\n\n      if (renderTime > 16) { // More than one frame\n        console.warn(`[Performance] ${componentName} slow render: ${renderTime.toFixed(2)}ms`);\n      }\n    });\n  });\n\n  return renderMetrics;\n}"
+  const scheduleTask = useCallback(async <T>(
+    id: string,
+    task: () => Promise<T> | T,
+    priority: 'high' | 'normal' | 'low' = 'normal'
+  ): Promise<T> => {
+    if (!defaultConfig.enableTaskQueuing) {
+      return await task();
+    }
+
+    return await performanceOptimizer.addTask(id, task, {
+      priority,
+      timeout: 30000,
+      maxRetries: 3
+    });
+  }, [defaultConfig.enableTaskQueuing]);
+
+  /**
+   * Schedule a render operation
+   */
+  const scheduleRender = useCallback((callback: () => void) => {
+    if (!defaultConfig.enableRenderOptimization) {
+      callback();
+      return;
+    }
+
+    performanceOptimizer.scheduleRender(callback);
+  }, [defaultConfig.enableRenderOptimization]);
+
+  /**
+   * Trigger memory cleanup
+   */
+  const triggerCleanup = useCallback(async (
+    level: 'warning' | 'critical' | 'emergency' = 'warning'
+  ) => {
+    setIsOptimizing(true);
+    try {
+      await memoryManager.triggerCleanup(level);
+      updateMetrics();
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [updateMetrics]);
+
+  /**
+   * Preload a module
+   */
+  const preloadModule = useCallback(async (moduleId: string) => {
+    try {
+      await dynamicLoader.preloadModules([moduleId]);
+    } catch (error) {
+      console.warn(`Failed to preload module ${moduleId}:`, error);
+    }
+  }, []);
+
+  /**
+   * Get performance recommendations
+   */
+  const getRecommendations = useCallback(() => {
+    const recommendations: string[] = [];
+
+    if (metrics.memoryUsage > 80) {
+      recommendations.push('استخدام الذاكرة مرتفع - قم بتنظيف البيانات');
+    }
+
+    if (metrics.fps < 30) {
+      recommendations.push('أداء الرسم منخفض - قلل من تعقيد العناصر');
+    }
+
+    if (metrics.taskQueueLength > 50) {
+      recommendations.push('طابور المهام مكتظ - قلل من العمليات المتزامنة');
+    }
+
+    if (metrics.cacheHitRate < 50) {
+      recommendations.push('معدل إصابة التخزين المؤقت منخفض - راجع استراتيجية التخزين');
+    }
+
+    return recommendations;
+  }, [metrics]);
+
+  /**
+   * Performance actions object
+   */
+  const actions: PerformanceActions = {
+    optimizeImage,
+    optimizeText,
+    scheduleTask,
+    scheduleRender,
+    triggerCleanup,
+    preloadModule
+  };
+
+  /**
+   * Auto-optimization effect
+   */
+  useEffect(() => {
+    if (!defaultConfig.enableMemoryMonitoring) return;
+
+    // Auto cleanup when memory usage is high
+    if (metrics.memoryUsage > defaultConfig.memoryThreshold) {
+      triggerCleanup('warning');
+    }
+
+    // Auto cleanup when health score is low
+    if (metrics.healthScore < 50) {
+      triggerCleanup('critical');
+    }
+  }, [metrics, defaultConfig, triggerCleanup]);
+
+  return {
+    metrics,
+    actions,
+    isOptimizing,
+    config: defaultConfig,
+    recommendations: getRecommendations()
+  };
+}
+
+/**
+ * Hook for caching with performance optimization
+ */
+export function useOptimizedCache<T>(key: string, defaultValue?: T) {
+  const [value, setValue] = useState<T | undefined>(defaultValue);
+  const [isLoading, setIsLoading] = useState(false);
+
+  /**
+   * Get value from cache
+   */
+  const get = useCallback(async (): Promise<T | undefined> => {
+    setIsLoading(true);
+    try {
+      const cached = await cacheManager.get<T>(key);
+      if (cached !== null) {
+        setValue(cached);
+        return cached;
+      }
+      return defaultValue;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [key, defaultValue]);
+
+  /**
+   * Set value in cache
+   */
+  const set = useCallback(async (
+    newValue: T,
+    options?: {
+      ttl?: number;
+      compress?: boolean;
+      priority?: 'high' | 'normal' | 'low';
+    }
+  ) => {
+    setIsLoading(true);
+    try {
+      await cacheManager.set(key, newValue, options);
+      setValue(newValue);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [key]);
+
+  /**
+   * Remove value from cache
+   */
+  const remove = useCallback(() => {
+    cacheManager.delete(key);
+    setValue(defaultValue);
+  }, [key, defaultValue]);
+
+  /**
+   * Load value on mount
+   */
+  useEffect(() => {
+    get();
+  }, [get]);
+
+  return {
+    value,
+    isLoading,
+    get,
+    set,
+    remove
+  };
+}
+
+/**
+ * Hook for dynamic module loading with performance optimization
+ */
+export function useDynamicModule<T>(moduleId: string, importFn: () => Promise<T>) {
+  const [module, setModule] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  /**
+   * Load module
+   */
+  const load = useCallback(async () => {
+    if (module || isLoading) return module;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const loadedModule = await dynamicLoader.loadModule(
+        moduleId,
+        importFn,
+        { priority: 'normal', preload: true }
+      );
+
+      setModule(loadedModule);
+      return loadedModule;
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error('Module loading failed');
+      setError(error);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [moduleId, importFn, module, isLoading]);
+
+  /**
+   * Preload module
+   */
+  const preload = useCallback(async () => {
+    if (module) return;
+
+    try {
+      await dynamicLoader.loadModule(
+        moduleId,
+        importFn,
+        { priority: 'low', preload: true }
+      );
+    } catch (error) {
+      console.warn(`Failed to preload module ${moduleId}:`, error);
+    }
+  }, [moduleId, importFn, module]);
+
+  return {
+    module,
+    isLoading,
+    error,
+    load,
+    preload
+  };
+}
+
+/**
+ * Hook for performance monitoring in components
+ */
+export function usePerformanceMonitor(componentName: string) {
+  const renderCountRef = useRef(0);
+  const mountTimeRef = useRef(0);
+  const [renderMetrics, setRenderMetrics] = useState({
+    renderCount: 0,
+    averageRenderTime: 0,
+    mountTime: 0
+  });
+
+  /**
+   * Track component mount
+   */
+  useEffect(() => {
+    mountTimeRef.current = performance.now();
+    performance.mark(`${componentName}-mount-start`);
+
+    return () => {
+      const mountTime = performance.now() - mountTimeRef.current;
+      performance.mark(`${componentName}-mount-end`);
+      performance.measure(
+        `${componentName}-mount`,
+        `${componentName}-mount-start`,
+        `${componentName}-mount-end`
+      );
+
+      console.log(`[Performance] ${componentName} mount time: ${mountTime.toFixed(2)}ms`);
+    };
+  }, [componentName]);
+
+  /**
+   * Track renders
+   */
+  useEffect(() => {
+    const renderStart = performance.now();
+    renderCountRef.current++;
+
+    requestAnimationFrame(() => {
+      const renderTime = performance.now() - renderStart;
+
+      setRenderMetrics(prev => {
+        const newAverageRenderTime = prev.averageRenderTime === 0
+          ? renderTime
+          : (prev.averageRenderTime + renderTime) / 2;
+
+        return {
+          renderCount: renderCountRef.current,
+          averageRenderTime: newAverageRenderTime,
+          mountTime: performance.now() - mountTimeRef.current
+        };
+      });
+
+      if (renderTime > 16) { // More than one frame
+        console.warn(`[Performance] ${componentName} slow render: ${renderTime.toFixed(2)}ms`);
+      }
+    });
+  });
+
+  return renderMetrics;
+}

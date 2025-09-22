@@ -1,8 +1,20 @@
 import { type User, type InsertUser, users } from "@shared/schema/users";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+
+// Try to import postgres and drizzle, make them optional
+let postgres: any = null;
+let drizzle: any = null;
+let eq: any = null;
+
+try {
+  postgres = require("postgres");
+  const drizzleModule = require("drizzle-orm/postgres-js");
+  const drizzleOrmModule = require("drizzle-orm");
+  drizzle = drizzleModule.drizzle;
+  eq = drizzleOrmModule.eq;
+} catch (error) {
+  console.warn('Postgres/Drizzle not available - using in-memory storage only');
+}
 
 // modify the interface with any CRUD methods
 // you might need
@@ -14,11 +26,14 @@ export interface IStorage {
 }
 
 export class DrizzleStorage implements IStorage {
-  private db: ReturnType<typeof drizzle>;
+  private db: any;
 
   constructor() {
     if (!process.env.DATABASE_URL) {
       throw new Error("DATABASE_URL is required for DrizzleStorage");
+    }
+    if (!postgres || !drizzle) {
+      throw new Error("Postgres/Drizzle dependencies not available");
     }
     const client = postgres(process.env.DATABASE_URL);
     this.db = drizzle(client);
@@ -82,8 +97,6 @@ export class MemStorage implements IStorage {
 }
 
 // Use DrizzleStorage in production, MemStorage for development
-export const storage = process.env.DATABASE_URL
+export const storage = (process.env.DATABASE_URL && postgres && drizzle)
   ? new DrizzleStorage()
   : new MemStorage();
-
-export { DrizzleStorage, MemStorage };

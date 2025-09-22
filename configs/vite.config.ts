@@ -28,11 +28,48 @@ export default defineConfig({
   define: {
     global: 'globalThis',
   },
+  optimizeDeps: {
+    exclude: [
+      'pdfjs-dist',
+      'mammoth',
+      'tesseract.js',
+      'sharp',
+      'scribe.js-ocr',
+      'html2canvas',
+      'jspdf',
+      'xlsx',
+      'marked',
+      'highlight.js',
+      'prettier',
+      'monaco-editor',
+      'chart.js',
+      'rxjs'
+    ]
+  },
   publicDir: path.resolve(import.meta.dirname, "..", "apps", "frontend", "public"),
   root: path.resolve(import.meta.dirname, "..", "apps", "frontend"),
   build: {
+    target: 'esnext',
     outDir: path.resolve(import.meta.dirname, "..", "dist", "public"),
     emptyOutDir: true,
+    rollupOptions: {
+      external: [
+        'pdfjs-dist',
+        'mammoth',
+        'tesseract.js',
+        'sharp',
+        'scribe.js-ocr',
+        'html2canvas',
+        'jspdf',
+        'xlsx',
+        'marked',
+        'highlight.js',
+        'prettier',
+        'monaco-editor',
+        'chart.js',
+        'rxjs'
+      ]
+    }
   },
   server: {
     fs: {

@@ -372,7 +372,7 @@ class CacheManager {
   private async compress(data: string): Promise<string> {
     try {
       // Use CompressionStream if available (modern browsers)
-      if ('CompressionStream' in window) {
+      if (typeof window !== 'undefined' && 'CompressionStream' in window) {
         const stream = new CompressionStream('gzip');
         const writer = stream.writable.getWriter();
         const reader = stream.readable.getReader();
@@ -399,8 +399,13 @@ class CacheManager {
         return btoa(String.fromCharCode(...compressed));
       }
 
-      // Fallback to simple encoding
-      return btoa(encodeURIComponent(data));
+      // Fallback to simple encoding (works in both browser and Node.js)
+      if (typeof btoa !== 'undefined') {
+        return btoa(encodeURIComponent(data));
+      } else {
+        // Node.js fallback
+        return Buffer.from(encodeURIComponent(data)).toString('base64');
+      }
     } catch (error) {
       console.warn('[CacheManager] Compression failed, using original data:', error);
       return data;
@@ -413,7 +418,7 @@ class CacheManager {
   private async decompress(data: string): Promise<string> {
     try {
       // Use DecompressionStream if available
-      if ('DecompressionStream' in window) {
+      if (typeof window !== 'undefined' && 'DecompressionStream' in window) {
         const compressed = new Uint8Array(
           atob(data).split('').map(char => char.charCodeAt(0))
         );
@@ -444,8 +449,13 @@ class CacheManager {
         return new TextDecoder().decode(decompressed);
       }
 
-      // Fallback
-      return decodeURIComponent(atob(data));
+      // Fallback (works in both browser and Node.js)
+      if (typeof atob !== 'undefined') {
+        return decodeURIComponent(atob(data));
+      } else {
+        // Node.js fallback
+        return decodeURIComponent(Buffer.from(data, 'base64').toString());
+      }
     } catch (error) {
       console.warn('[CacheManager] Decompression failed:', error);
       return data;
@@ -535,6 +545,11 @@ class CacheManager {
    */
   private persistCache(): void {
     try {
+      // Only persist in browser environment
+      if (typeof localStorage === 'undefined') {
+        return;
+      }
+
       const cacheData = {
         entries: Array.from(this.cache.entries()),
         timestamp: Date.now()
@@ -550,7 +565,7 @@ class CacheManager {
    * Load persisted cache from localStorage
    */
   private loadPersistedCache(): void {
-    if (!this.config.enablePersistence) return;
+    if (!this.config.enablePersistence || typeof localStorage === 'undefined') return;
 
     try {
       const cached = localStorage.getItem(this.config.persistenceKey);
@@ -577,7 +592,9 @@ class CacheManager {
    */
   private clearPersistedCache(): void {
     try {
-      localStorage.removeItem(this.config.persistenceKey);
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(this.config.persistenceKey);
+      }
     } catch (error) {
       console.warn('[CacheManager] Failed to clear persisted cache:', error);
     }

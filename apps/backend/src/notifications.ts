@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import admin from 'firebase-admin';
+// import admin from 'firebase-admin'; // Commented out as it's not used
 
 const router = Router();
 
