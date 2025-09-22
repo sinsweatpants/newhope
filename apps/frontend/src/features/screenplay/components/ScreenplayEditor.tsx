@@ -12,8 +12,8 @@ import {
   Parentheses, MessageCircle, FastForward, BrainCircuit, NotebookText
 } from 'lucide-react';
 
-import { ScreenplayCoordinator } from '@shared/ScreenplayCoordinator';
-import { getFormatStyles } from '@shared/formatStyles';
+import { ScreenplayCoordinator } from '@shared/screenplay/coordinator';
+import { getFormatStyles } from '@shared/screenplay/formatStyles';
 
 // ============================================================================
 // Constants

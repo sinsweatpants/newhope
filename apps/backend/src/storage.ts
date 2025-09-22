@@ -1,4 +1,4 @@
-import { type User, type InsertUser } from "@shared/schema";
+import { type User, type InsertUser } from "@shared/schema/users";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -29,7 +29,7 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { ...insert-user, id };
     this.users.set(id, user);
     return user;
   }

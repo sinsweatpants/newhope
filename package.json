@@ -1,14 +1,21 @@
 {
-  "name": "rest-express",
+  "name": "doodleduel-monorepo",
+  "private": true,
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "main": "dist/index.js",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "main": "dist/server/index.js",
   "scripts": {
-    "dev": "NODE_ENV=development npx tsx backend/index.ts",
-    "build": "vite build && esbuild backend/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "NODE_ENV=production node dist/index.js",
-    "check": "tsc",
+    "dev": "NODE_ENV=development tsx apps/backend/src/index.ts",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "vite --config ./configs/vite.config.ts build",
+    "build:backend": "esbuild apps/backend/src/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist/server",
+    "start": "NODE_ENV=production node dist/server/index.js",
+    "check": "tsc --noEmit",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -54,10 +61,12 @@
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
+    "firebase": "^12.3.0",
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^5.1.1",
     "framer-motion": "^11.13.1",
     "input-otp": "^1.4.2",
+    "json-diff": "^1.0.6",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
     "minimist": "^1.2.8",

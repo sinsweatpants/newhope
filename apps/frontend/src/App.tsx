@@ -5,6 +5,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ScreenplayProcessorPage from "@/features/screenplay/pages/screenplay-processor";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import { requestForToken, onMessageListener } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 function Router() {
   return (
@@ -16,6 +19,22 @@ function Router() {
 }
 
 function App() {
+  const { toast } = useToast();
+
+  useEffect(() => {
+    requestForToken();
+
+    onMessageListener()
+      .then((payload) => {
+        toast({
+          title: payload.notification.title,
+          description: payload.notification.body,
+        });
+        console.log(payload);
+      })
+      .catch((err) => console.log("failed: ", err));
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
