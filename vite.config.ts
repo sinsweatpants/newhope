@@ -1,27 +1,39 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    runtimeErrorOverlay(),
+    ...(process.env.NODE_ENV !== "production" &&
+    process.env.REPL_ID !== undefined
+      ? [
+          await import("@replit/vite-plugin-cartographer").then((m) =>
+            m.cartographer(),
+          ),
+          await import("@replit/vite-plugin-dev-banner").then((m) =>
+            m.devBanner(),
+          ),
+        ]
+      : []),
+  ],
   resolve: {
     alias: {
-      // Use path.resolve with a relative path from the project root.
-      // This is simpler and avoids ESM/CJS issues with __dirname.
-      "@": path.resolve("./frontend/src"),
+      "@": path.resolve(import.meta.dirname, "frontend", "src"),
+      "@shared": path.resolve(import.meta.dirname, "frontend", "src", "shared"),
     },
+  },
+  root: path.resolve(import.meta.dirname, "frontend"),
+  build: {
+    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    emptyOutDir: true,
   },
   server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:5001",
-        changeOrigin: true,
-      },
+    fs: {
+      strict: true,
+      deny: ["**/.*"],
     },
-  },
-  build: {
-    outDir: "dist/public",
-    emptyOutDir: true,
   },
 });
