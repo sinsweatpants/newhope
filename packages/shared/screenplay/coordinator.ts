@@ -22,27 +22,52 @@ export class ScreenplayCoordinator {
     ];
   }
 
-  processLine(line: string, context: Agent.AgentContext = {}): AgentResult {
+  processLine(line: string, context: AgentContext = {}): AgentResult {
+    // معالجة خاصة لرؤوس المشاهد مع ضمان تطبيق الأنماط الصحيحة
+    const trimmedLine = line.trim();
+
+    // تحديد نوع رأس المشهد أولاً
+    if (trimmedLine.match(/^مشهد\s*\d+/i)) {
+      const sceneAgent = new SceneHeaderAgent();
+      const result = sceneAgent.execute(line, context, this.getFormatStylesFn);
+      if (result?.processed) {
+        // التأكد من تطبيق الأنماط المحددة لرؤوس المشاهد
+        result.elementType = result.elementType || 'scene-header-1';
+        return result;
+      }
+    }
+
+    // معالجة عادية للعوامل الأخرى
     for (const agent of this.agents) {
       const res = agent.execute(line, context, this.getFormatStylesFn);
       if (res?.processed) return res;
     }
+
+    // العامل الافتراضي
     return new DefaultAgent().execute(line, context, this.getFormatStylesFn) as AgentResult;
   }
 
   // Helper to decide if an ENTER is needed, now using correct element types
   shouldInsertEnter(prevType: string, currentType: string): boolean {
     const isPrevDialogue = ['character-dialogue', 'continued-dialogue', 'parenthetical'].includes(prevType);
+    const isPrevSceneHeader = ['scene-header-1', 'scene-header-2', 'scene-header-3', 'scene-header-combined'].includes(prevType);
+    const isCurrentSceneHeader = ['scene-header-1', 'scene-header-2', 'scene-header-3', 'scene-header-combined'].includes(currentType);
 
-    // FROM 'scene-header-3' TO 'action' = ENTER
-    if (prevType === 'scene-header-3' && currentType === 'action') return true;
-    
+    // أي شيء قبل رأس المشهد = ENTER
+    if (isCurrentSceneHeader && prevType !== 'basmala') return true;
+
+    // FROM رؤوس المشاهد TO action = ENTER
+    if (isPrevSceneHeader && currentType === 'action') return true;
+
+    // FROM رؤوس المشاهد TO character = ENTER
+    if (isPrevSceneHeader && currentType === 'character-dialogue') return true;
+
     // FROM ACTION TO character = ENTER
     if (prevType === 'action' && currentType === 'character-dialogue') return true;
 
     // FROM dialogue TO character = ENTER
     if (isPrevDialogue && currentType === 'character-dialogue') return true;
-    
+
     // FROM dialogue TO ACTION = ENTER
     if (isPrevDialogue && currentType === 'action') return true;
 

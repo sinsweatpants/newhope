@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  Sun, Moon
+  Sun, Moon, Brain
 } from 'lucide-react';
 
 import { pipelineProcessor } from '@shared/screenplay/pipelineProcessor';
@@ -80,6 +80,7 @@ const ScreenplayEditor = () => {
   const [useAI, setUseAI] = useState(true);
   const [showAIConfig, setShowAIConfig] = useState(false);
   const [currentMode, setCurrentMode] = useState<'basic' | 'advanced'>('basic');
+  const [selectedText, setSelectedText] = useState('');
 
   // Initialize AI coordinator
   useEffect(() => {
@@ -223,14 +224,30 @@ const ScreenplayEditor = () => {
         editorRef.current.innerHTML = formattedHTML;
       }
 
-      // Re-apply styles
+      // Re-apply styles with special handling for scene headers
       const divs = editorRef.current.querySelectorAll('div, span');
       divs.forEach(div => {
         const el = div as HTMLElement;
         if (el.className) {
           const baseClass = el.className.split(' ')[0];
-          const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-          Object.assign(el.style, styles);
+
+          // معالجة خاصة لرؤوس المشاهد
+          if (baseClass.startsWith('scene-header')) {
+            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+            Object.assign(el.style, styles);
+
+            // إضافة أنماط CSS مخصصة لرؤوس المشاهد
+            if (baseClass === 'scene-header-1') {
+              el.style.borderTop = '2px solid #333';
+              el.style.borderBottom = '1px solid #999';
+            } else if (baseClass === 'scene-header-3') {
+              el.style.backgroundColor = '#f5f5f5';
+              el.style.borderRadius = '4px';
+            }
+          } else {
+            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+            Object.assign(el.style, styles);
+          }
         }
       });
 
@@ -302,14 +319,30 @@ const ScreenplayEditor = () => {
         });
       }
 
-      // Re-apply styles
+      // Re-apply styles with special handling for scene headers
       const divs = editorRef.current.querySelectorAll('div, span');
       divs.forEach(div => {
         const el = div as HTMLElement;
         if (el.className) {
           const baseClass = el.className.split(' ')[0];
-          const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-          Object.assign(el.style, styles);
+
+          // معالجة خاصة لرؤوس المشاهد
+          if (baseClass.startsWith('scene-header')) {
+            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+            Object.assign(el.style, styles);
+
+            // إضافة أنماط CSS مخصصة لرؤوس المشاهد
+            if (baseClass === 'scene-header-1') {
+              el.style.borderTop = '2px solid #333';
+              el.style.borderBottom = '1px solid #999';
+            } else if (baseClass === 'scene-header-3') {
+              el.style.backgroundColor = '#f5f5f5';
+              el.style.borderRadius = '4px';
+            }
+          } else {
+            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+            Object.assign(el.style, styles);
+          }
         }
       });
 
@@ -463,6 +496,69 @@ const ScreenplayEditor = () => {
             bottom: calc(1.9cm - 0.25in);
             left: 2.5cm;
             font-size: 10pt;
+        }
+
+        /* أنماط CSS مُضمنة لرؤوس المشاهد */
+        .scene-header-1 {
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            font-size: 14pt !important;
+            text-align: right !important;
+            margin: 0 !important;
+            padding: 0.3rem 0 !important;
+            flex: 1 !important;
+        }
+
+        .scene-header-2 {
+            font-style: italic !important;
+            font-size: 12pt !important;
+            text-align: left !important;
+            color: #666 !important;
+            margin: 0 !important;
+            padding: 0.3rem 0 !important;
+            flex: 1 !important;
+        }
+
+        .scene-header-3 {
+            text-align: center !important;
+            font-weight: bold !important;
+            font-size: 13pt !important;
+            margin: 0.8rem 0 0.3rem 0 !important;
+            padding: 0.3rem 0.5rem !important;
+            text-decoration: underline !important;
+            background-color: #f5f5f5 !important;
+            border-radius: 4px !important;
+            border: 1px solid #ddd !important;
+        }
+
+        .scene-header-top-line {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            margin: 1rem 0 0.5rem 0 !important;
+            padding: 0.5rem 1rem !important;
+            border: 2px solid #333 !important;
+            background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%) !important;
+            border-radius: 6px !important;
+        }
+
+        .scene-header-container {
+            margin: 1.5rem 0 1rem 0 !important;
+            padding: 1rem !important;
+            border: 2px solid #2c5aa0 !important;
+            border-radius: 8px !important;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        }
+
+        .scene-header-combined {
+            margin: 1.5rem 0 1rem 0 !important;
+            padding: 1rem !important;
+            border: 2px solid #2c5aa0 !important;
+            border-radius: 8px !important;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
         }
       `}} />
 

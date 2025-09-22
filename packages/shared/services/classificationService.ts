@@ -95,7 +95,7 @@ export class ClassificationService {
           return hybridResult;
 
         } catch (aiError) {
-          console.warn('[ClassificationService] AI classification failed, using local:', aiError);
+          console.warn(`[ClassificationService] AI classification failed, using local. Error: ${JSON.stringify(aiError, null, 2)}`);
           const fallbackResult = {
             ...localResult,
             source: 'fallback' as const,
@@ -118,7 +118,7 @@ export class ClassificationService {
       }
 
     } catch (error) {
-      console.error('[ClassificationService] Classification failed:', error);
+      console.error(`[ClassificationService] Classification failed: ${JSON.stringify(error, null, 2)}`);
 
       // Emergency fallback
       const emergencyResult: ClassificationResult = {

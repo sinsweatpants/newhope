@@ -18,19 +18,32 @@ export function classifyAction(text: string): string {
   return ActionType.General;
 }
 
-export function compileHtml(tag: string, cls: string, text: string, getFormatStylesFn: (formatType: string) => React.CSSProperties, extra: React.CSSProperties = {}): string {
-  const div = document.createElement(tag);
-  div.className = cls;
-  const baseStyles = getFormatStylesFn ? getFormatStylesFn(cls.split(' ')[0]) || {} : {};
-  Object.assign(div.style, baseStyles, extra);
-  div.textContent = text;
-  return div.outerHTML;
+export function compileHtml(tag: string, cls: string, text: string, getFormatStylesFn?: (formatType: string) => React.CSSProperties, extra: React.CSSProperties = {}): string {
+  const element = document.createElement(tag);
+  element.className = cls;
+
+  // تطبيق الأنماط الأساسية من getFormatStylesFn
+  if (getFormatStylesFn) {
+    const baseClass = cls.split(' ')[0];
+    const baseStyles = getFormatStylesFn(baseClass) || {};
+    Object.assign(element.style, baseStyles);
+  }
+
+  // تطبيق الأنماط الإضافية
+  if (extra && Object.keys(extra).length > 0) {
+    Object.assign(element.style, extra);
+  }
+
+  // تعيين النص
+  element.textContent = text;
+
+  return element.outerHTML;
 }
 
 class BaseAgent implements FormattingAgent {
   constructor() {}
 
-  execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
+  execute(_line: string, _ctx: AgentContext, _getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
     throw new Error("Method 'execute' must be implemented.");
   }
 }
@@ -51,30 +64,201 @@ export class BasmalaAgent extends BaseAgent {
 export class SceneHeaderAgent extends BaseAgent {
   execute(line: string, ctx: AgentContext, getFormatStylesFn: (formatType: string) => React.CSSProperties): AgentResult | null {
     const trimmedLine = line.trim();
-    const m2 = trimmedLine.match(/^(مشهد\s*\d+)\s*[-–—:،]?\s*(.*)$/i);
-    if (m2) {
-      const head = m2[1].trim();
-      const rest = m2[2].trim();
-      if (rest && Patterns.sceneHeader2.time.test(rest) && Patterns.sceneHeader2.inOut.test(rest)) {
-        const container = document.createElement('div');
-        container.className = 'scene-header-top-line';
-        const part1 = document.createElement('span');
-        part1.className = 'scene-header-1';
-        part1.textContent = head;
-        const part2 = document.createElement('span');
-        part2.className = 'scene-header-2';
-        part2.textContent = rest;
-        container.appendChild(part1);
-        container.appendChild(part2);
+
+    // التعرف على أنماط رؤوس المشاهد المختلفة
+
+    // نمط مخصص للنص في الصورة: "مشهد 1 - ليل - داخلي - مستشفى"
+    const fullSceneMatch = trimmedLine.match(/^(مشهد\s*\d+)\s*[-–—]\s*(ليل|نهار|صباح|مساء|فجر|ظهر|عصر|مغرب|عشاء)\s*[-–—]\s*(داخلي|خارجي|داخل|خارج)\s*[-–—]?\s*(.*)$/i);
+    if (fullSceneMatch) {
+      const sceneNumber = fullSceneMatch[1].trim();
+      const timeInfo = fullSceneMatch[2].trim();
+      const locationInfo = fullSceneMatch[3].trim();
+      const specificPlace = fullSceneMatch[4].trim();
+
+      // إنشاء container رئيسي
+      const mainContainer = document.createElement('div');
+      mainContainer.className = 'scene-header-container';
+
+      // السطر الأول: رقم المشهد على اليمين، الوقت والموقع على اليسار
+      const topLineContainer = document.createElement('div');
+      topLineContainer.className = 'scene-header-top-line';
+      const topLineStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-top-line') || {} : {};
+      Object.assign(topLineContainer.style, topLineStyles);
+
+      const sceneNumberSpan = document.createElement('span');
+      sceneNumberSpan.className = 'scene-header-1';
+      const numberStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-1') || {} : {};
+      Object.assign(sceneNumberSpan.style, numberStyles);
+      sceneNumberSpan.textContent = sceneNumber;
+
+      const timeLocationSpan = document.createElement('span');
+      timeLocationSpan.className = 'scene-header-2';
+      const detailsStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-2') || {} : {};
+      Object.assign(timeLocationSpan.style, detailsStyles);
+      timeLocationSpan.textContent = `${timeInfo} - ${locationInfo}`;
+
+      topLineContainer.appendChild(sceneNumberSpan);
+      topLineContainer.appendChild(timeLocationSpan);
+      mainContainer.appendChild(topLineContainer);
+
+      // السطر الثاني: الموقع المحدد في المنتصف
+      if (specificPlace) {
+        const locationDiv = document.createElement('div');
+        locationDiv.className = 'scene-header-3';
+        const locationStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-3') || {} : {};
+        Object.assign(locationDiv.style, locationStyles);
+        locationDiv.textContent = specificPlace;
+        mainContainer.appendChild(locationDiv);
+      }
+
+      ctx.inDialogue = false;
+      return {
+        html: mainContainer.outerHTML,
+        processed: true,
+        confidence: 0.99,
+        elementType: "scene-header-combined",
+        agentUsed: "SceneHeaderAgent",
+        originalLine: line,
+        context: ctx
+      };
+    }
+
+    // نمط عام للمشاهد المعقدة
+    const complexSceneMatch = trimmedLine.match(/^(مشهد\s*\d+)\s*[-–—]\s*(.+)$/i);
+    if (complexSceneMatch) {
+      const sceneNumber = complexSceneMatch[1].trim();
+      const allDetails = complexSceneMatch[2].trim();
+
+      // تحليل التفاصيل بطريقة أذكى
+      const timeWords = ['ليل', 'نهار', 'صباح', 'مساء', 'فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'];
+      const locationWords = ['داخلي', 'خارجي', 'داخل', 'خارج'];
+
+      let timeAndLocation = '';
+      let specificLocation = '';
+
+      // تقسيم النص بناءً على الفاصلات أو الشرطات
+      const parts = allDetails.split(/[-–—،]/).map(part => part.trim()).filter(part => part.length > 0);
+
+      // فصل الأجزاء إلى مجموعتين
+      const timeLocationParts = [];
+      const specificLocationParts = [];
+
+      for (const part of parts) {
+        const hasTime = timeWords.some(word => part.includes(word));
+        const hasLocation = locationWords.some(word => part.includes(word));
+
+        if (hasTime || hasLocation) {
+          timeLocationParts.push(part);
+        } else {
+          specificLocationParts.push(part);
+        }
+      }
+
+      // تجميع الأجزاء
+      timeAndLocation = timeLocationParts.join(' - ');
+      specificLocation = specificLocationParts.join(' - ');
+
+      // إذا لم نجد كلمات وقت أو موقع، نتعامل مع النمط العادي
+      if (!timeAndLocation && specificLocationParts.length > 0) {
+        // للنص مثل "مشهد 1 - ليل - داخلي"
+        if (parts.length >= 2) {
+          // الجزءان الأولان للوقت والموقع العام
+          timeAndLocation = parts.slice(0, 2).join(' - ');
+          // باقي الأجزاء للموقع المحدد
+          if (parts.length > 2) {
+            specificLocation = parts.slice(2).join(' - ');
+          }
+        } else {
+          timeAndLocation = parts[0] || '';
+        }
+      }
+
+      // إذا كان لدينا شيء مثل "ليل - داخلي" وحده
+      if (!timeAndLocation) {
+        timeAndLocation = allDetails;
+      }
+
+      if (timeAndLocation || specificLocation) {
+        // إنشاء container رئيسي
+        const mainContainer = document.createElement('div');
+        mainContainer.className = 'scene-header-container';
+
+        // السطر الأول: scene-header-1 (يمين) و scene-header-2 (يسار)
+        const topLineContainer = document.createElement('div');
+        topLineContainer.className = 'scene-header-top-line';
+        const topLineStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-top-line') || {} : {};
+        Object.assign(topLineContainer.style, topLineStyles);
+
+        const sceneNumberSpan = document.createElement('span');
+        sceneNumberSpan.className = 'scene-header-1';
+        const numberStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-1') || {} : {};
+        Object.assign(sceneNumberSpan.style, numberStyles);
+        sceneNumberSpan.textContent = sceneNumber;
+
+        const timeLocationSpan = document.createElement('span');
+        timeLocationSpan.className = 'scene-header-2';
+        const detailsStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-2') || {} : {};
+        Object.assign(timeLocationSpan.style, detailsStyles);
+        timeLocationSpan.textContent = timeAndLocation || '';
+
+        topLineContainer.appendChild(sceneNumberSpan);
+        topLineContainer.appendChild(timeLocationSpan);
+        mainContainer.appendChild(topLineContainer);
+
+        // إضافة الموقع المحدد في السطر الثاني إن وُجد
+        if (specificLocation) {
+          const locationDiv = document.createElement('div');
+          locationDiv.className = 'scene-header-3';
+          const locationStyles = getFormatStylesFn ? getFormatStylesFn('scene-header-3') || {} : {};
+          Object.assign(locationDiv.style, locationStyles);
+          locationDiv.textContent = specificLocation;
+          mainContainer.appendChild(locationDiv);
+        }
+
         ctx.inDialogue = false;
-        return { html: container.outerHTML, processed: true, confidence: 0.99, elementType: "scene-header-combined", agentUsed: "SceneHeaderAgent", originalLine: line, context: ctx };
+        return {
+          html: mainContainer.outerHTML,
+          processed: true,
+          confidence: 0.99,
+          elementType: "scene-header-combined",
+          agentUsed: "SceneHeaderAgent",
+          originalLine: line,
+          context: ctx
+        };
       }
     }
-    if (Patterns.sceneHeader3.test(trimmedLine)) {
+
+    // نمط scene-header-3 (عناوين فرعية أو مواقع)
+    if (Patterns.sceneHeader3?.test(trimmedLine)) {
       const html = compileHtml("div", "scene-header-3", trimmedLine, getFormatStylesFn);
       ctx.inDialogue = false;
-      return { html, processed: true, confidence: 0.90, elementType: "scene-header-3", agentUsed: "SceneHeaderAgent", originalLine: line, context: ctx };
+      return {
+        html,
+        processed: true,
+        confidence: 0.90,
+        elementType: "scene-header-3",
+        agentUsed: "SceneHeaderAgent",
+        originalLine: line,
+        context: ctx
+      };
     }
+
+    // نمط بسيط للمشاهد
+    const simpleSceneMatch = trimmedLine.match(/^مشهد\s*\d+/i);
+    if (simpleSceneMatch) {
+      const html = compileHtml("div", "scene-header-1", trimmedLine, getFormatStylesFn);
+      ctx.inDialogue = false;
+      return {
+        html,
+        processed: true,
+        confidence: 0.85,
+        elementType: "scene-header-1",
+        agentUsed: "SceneHeaderAgent",
+        originalLine: line,
+        context: ctx
+      };
+    }
+
     return null;
   }
 }

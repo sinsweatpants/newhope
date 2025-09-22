@@ -10,8 +10,40 @@ export const getFormatStyles = (formatType: string, selectedFont = 'Amiri', sele
     
     const formatStyles: { [key: string]: React.CSSProperties } = {
       basmala: { textAlign: 'left', margin: '0 0 2rem 0', fontWeight: 'bold' },
-      'scene-header-top-line': { display: 'flex', justifyContent: 'space-between', width: '100%', margin: '0rem 0 0 0' },
-      'scene-header-3': { textAlign: 'center', fontWeight: 'bold', margin: '0' },
+      'scene-header-top-line': {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        margin: '1rem 0 0.5rem 0',
+        padding: '0.5rem 0',
+        borderBottom: '1px solid #ddd'
+      },
+      'scene-header-1': {
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        fontSize: '14pt',
+        textAlign: 'right',
+        margin: '0',
+        padding: '0.3rem 0',
+        flex: '1'
+      },
+      'scene-header-2': {
+        fontStyle: 'italic',
+        fontSize: '12pt',
+        textAlign: 'left',
+        color: '#666',
+        margin: '0',
+        padding: '0.3rem 0',
+        flex: '1'
+      },
+      'scene-header-3': {
+        textAlign: 'center',
+        fontWeight: 'bold',
+        fontSize: '13pt',
+        margin: '0.8rem 0 0.3rem 0',
+        textDecoration: 'underline'
+      },
       action: { textAlign: 'right', margin: '0rem 0' },
       'stage-direction': { textAlign: 'right', margin: '0.3rem 0', fontStyle: 'italic', color: '#666' },
       character: { textAlign: 'center', fontWeight: 'bold', textTransform: 'uppercase', margin: '0rem auto 0 auto', width: '2.5in' },
@@ -23,11 +55,6 @@ export const getFormatStyles = (formatType: string, selectedFont = 'Amiri', sele
       'syriac-text': { fontFamily: 'Estrangelo Edessa, serif', fontSize: '14pt', margin: '0.2rem 0', direction: 'ltr' },
       'arabic-translation': { fontSize: '11pt', fontStyle: 'italic', color: '#555', margin: '0.2rem 0' }
     };
-    
-    const finalStyles = { ...baseStyles, ...formatStyles[formatType] };
-    
-    if (formatType === 'scene-header-1') return { ...baseStyles, fontWeight: 'bold', textTransform: 'uppercase' };
-    if (formatType === 'scene-header-2') return { ...baseStyles, fontStyle: 'italic' };
-    
-    return finalStyles;
+
+    return { ...baseStyles, ...formatStyles[formatType] };
 };
