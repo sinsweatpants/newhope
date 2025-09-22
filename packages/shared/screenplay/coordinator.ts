@@ -15,8 +15,8 @@ export class ScreenplayCoordinator {
       TransitionAgent,
       SceneHeaderAgent,
       DirectorNotesAgent,
-      CharacterDialogueAgent, // Runs first to identify dialogue lines
-      ActionAgent,            // Runs after, to catch any non-dialogue lines as actions
+      CharacterDialogueAgent, 
+      ActionAgent,            
       SyriacDialogueAgent,
       DefaultAgent
     ];
@@ -30,19 +30,29 @@ export class ScreenplayCoordinator {
     return DefaultAgent(line, context, this.getFormatStylesFn) as AgentResult;
   }
 
-  // Helper to decide if an ENTER is needed
+  // Helper to decide if an ENTER is needed, now using correct element types
   shouldInsertEnter(prevType: string, currentType: string): boolean {
-    const rules: [string, string][] = [
-      ['scene-header-3', 'action'],
-      ['action', 'character'],
-      ['action', 'dialogue'], 
-      ['dialogue', 'character'],
-      ['dialogue', 'action'],
-      ['dialogue', 'transition'],
-      ['action', 'transition'],
-    ];
+    const isPrevDialogue = ['character-dialogue', 'continued-dialogue', 'parenthetical'].includes(prevType);
 
-    return rules.some(([prev, current]) => prev === prevType && current === currentType);
+    // FROM 'scene-header-3' TO 'action' = ENTER
+    if (prevType === 'scene-header-3' && currentType === 'action') return true;
+    
+    // FROM ACTION TO character = ENTER
+    if (prevType === 'action' && currentType === 'character-dialogue') return true;
+
+    // FROM dialogue TO character = ENTER
+    if (isPrevDialogue && currentType === 'character-dialogue') return true;
+    
+    // FROM dialogue TO ACTION = ENTER
+    if (isPrevDialogue && currentType === 'action') return true;
+
+    // FROM dialogue TO transition = ENTER
+    if (isPrevDialogue && currentType === 'transition') return true;
+
+    // FROM ACTION TO transition = ENTER
+    if (prevType === 'action' && currentType === 'transition') return true;
+
+    return false;
   }
 
   processScript(lines: string[]) {
@@ -50,32 +60,39 @@ export class ScreenplayCoordinator {
     const results: AgentResult[] = [];
     let previousLineType: string | null = null;
     
-    // Filter out empty lines from the source script to normalize spacing
     const nonEmptyLines = lines.map(ln => ln.trim()).filter(ln => ln.length > 0);
 
     for (const line of nonEmptyLines) {
       const result = this.processLine(line, ctx);
-      const currentLineType = result.type;
+      
+      // Correctly use elementType
+      const currentLineType = result.elementType;
 
       if (previousLineType) {
         if (this.shouldInsertEnter(previousLineType, currentLineType)) {
-          // Insert an "ENTER" - a styled empty div
           const style = this.getFormatStylesFn('action');
+          // Ensure the spacer has height
+          style.minHeight = '1.2em'; 
           const styleString = Object.entries(style)
             .map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:${v}`)
             .join(';');
             
           const enterLine: AgentResult = {
-            type: 'action', // Treat spacer as an action
+            elementType: 'spacer', // A specific type for the spacer
             html: `<div class="action" style="${styleString}">&nbsp;</div>`,
-            processed: true
+            processed: true,
+            confidence: 1.0,
+            agentUsed: 'Coordinator',
+            originalLine: '',
+            context: ctx
           };
           results.push(enterLine);
         }
       }
 
       results.push(result);
-      previousLineType = result.type; // Use the type from the result object
+      // Correctly update the previous line type
+      previousLineType = result.elementType;
     }
 
     return { results };
