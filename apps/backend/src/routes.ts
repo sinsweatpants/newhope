@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { notificationsRouter } from "./notifications";
 import multer from "multer";
 import path from "path";
+import { promises as fs } from 'fs';
+import { ocrService } from '@shared/services/ocrService';
+import { classificationService } from '@shared/services/classificationService';
 
 // Configure multer for file uploads
 const upload = multer({
@@ -85,33 +88,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OCR processing endpoint (placeholder for future OCR service)
   app.post('/api/ocr/process', async (req, res) => {
     try {
-      const { fileId, options } = req.body;
-      // TODO: Integrate with ocrService when implemented
-      res.json({
-        success: true,
-        text: 'OCR processing will be implemented with ocrService',
-        confidence: 0.95
+      const { fileId, filePath, fileData, originalName, mimetype, options } = req.body ?? {};
+
+      if (!fileId && !filePath && !fileData) {
+        return res.status(400).json({ success: false, error: 'لم يتم تمرير ملف للمعالجة' });
+      }
+
+      const resolvedInfo = await resolveIncomingFile({ fileId, filePath, fileData, originalName, mimetype });
+      if (!resolvedInfo) {
+        return res.status(404).json({ success: false, error: 'تعذر العثور على الملف المطلوب' });
+      }
+
+      const { buffer, name, type } = resolvedInfo;
+      const file = new File([buffer], name, { type });
+
+      const result = await ocrService.processFile(file, {
+        language: options?.language,
+        preprocessImage: true,
+        fallbackOnLowConfidence: true,
+        engines: options?.engines,
+        confidenceThreshold: options?.confidenceThreshold,
+        outputFormat: options?.outputFormat
       });
+
+      res.json({ success: true, data: result });
     } catch (error) {
-      res.status(500).json({ error: 'OCR processing failed' });
+      const message = error instanceof Error ? error.message : 'OCR processing failed';
+      res.status(500).json({ success: false, error: message });
     }
   });
 
   // Screenplay-specific endpoints
   app.post('/api/screenplay/classify', async (req, res) => {
     try {
-      const { text, context } = req.body;
-      // TODO: Integrate with classificationService
-      res.json({
-        classification: 'action',
-        confidence: 0.8,
-        suggestions: []
-      });
+      const { text, context, options } = req.body ?? {};
+
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.status(400).json({ success: false, error: 'نص السيناريو مطلوب للتصنيف' });
+      }
+
+      const result = await classificationService.classify({ text, context, options });
+      res.json({ success: true, data: result });
     } catch (error) {
-      res.status(500).json({ error: 'Classification failed' });
+      const message = error instanceof Error ? error.message : 'Classification failed';
+      res.status(500).json({ success: false, error: message });
     }
   });
 
   const httpServer = createServer(app);
   return httpServer;
+}
+
+interface IncomingFileRequest {
+  fileId?: string;
+  filePath?: string;
+  fileData?: string;
+  originalName?: string;
+  mimetype?: string;
+}
+
+async function resolveIncomingFile({
+  fileId,
+  filePath,
+  fileData,
+  originalName,
+  mimetype
+}: IncomingFileRequest): Promise<{ buffer: Buffer; name: string; type: string } | null> {
+  try {
+    if (fileData) {
+      const decoded = decodeBase64Payload(fileData);
+      const type = mimetype || decoded.mimetype || guessMimeType(originalName);
+      const name = originalName || `upload.${extensionFromMime(type)}`;
+      return { buffer: decoded.buffer, name, type };
+    }
+
+    const targetPath = filePath
+      ? path.resolve(process.cwd(), filePath)
+      : path.resolve(process.cwd(), 'uploads', fileId as string);
+
+    const buffer = await fs.readFile(targetPath);
+    const type = mimetype || guessMimeType(originalName || targetPath);
+    const name = originalName || path.basename(targetPath);
+    return { buffer, name, type };
+  } catch {
+    return null;
+  }
+}
+
+function decodeBase64Payload(payload: string): { buffer: Buffer; mimetype?: string } {
+  const match = payload.match(/^data:(.*?);base64,(.*)$/);
+  if (match) {
+    return { buffer: Buffer.from(match[2], 'base64'), mimetype: match[1] };
+  }
+  return { buffer: Buffer.from(payload, 'base64') };
+}
+
+function guessMimeType(reference?: string | null): string {
+  if (!reference) return 'application/octet-stream';
+  const ext = path.extname(reference).toLowerCase();
+  switch (ext) {
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.gif':
+      return 'image/gif';
+    case '.bmp':
+      return 'image/bmp';
+    case '.pdf':
+      return 'application/pdf';
+    case '.txt':
+      return 'text/plain';
+    case '.doc':
+      return 'application/msword';
+    case '.docx':
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+function extensionFromMime(mime: string): string {
+  switch (mime) {
+    case 'image/png':
+      return 'png';
+    case 'image/jpeg':
+      return 'jpg';
+    case 'image/gif':
+      return 'gif';
+    case 'image/bmp':
+      return 'bmp';
+    case 'application/pdf':
+      return 'pdf';
+    case 'text/plain':
+      return 'txt';
+    default:
+      return 'bin';
+  }
 }
