@@ -90,7 +90,7 @@ export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStyl
 }
 
 export const ActionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-    if (Patterns.actionKeywords.test(line)) {
+    if (Patterns.actionKeywords.test(line) || Patterns.actionBullet.test(line)) {
         const html = compileHtml("div", `action`, line, getFormatStylesFn);
         ctx.inDialogue = false;
         return { html, processed: true, confidence: 0.85, elementType: `action`, agentUsed: "ActionAgent", originalLine: line, context: ctx };
@@ -117,12 +117,6 @@ export const DirectorNotesAgent: FormattingAgent = (line, ctx, getFormatStylesFn
 }
 
 export const DefaultAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  if (Patterns.dialogueHeuristics.test(line.trim())) {
-    const html = compileHtml("div", "dialogue", line, getFormatStylesFn);
-    ctx.inDialogue = true; // Assume we are in dialogue now
-    return { html, processed: true, confidence: 0.5, elementType: 'dialogue', agentUsed: "DefaultAgent (Heuristic)", originalLine: line, context: ctx };
-  }
-
   const html = compileHtml("div", "action", line, getFormatStylesFn);
   ctx.inDialogue = false;
   return { html, processed: true, confidence: 0.1, elementType: 'action', agentUsed: "DefaultAgent", originalLine: line, context: ctx };
