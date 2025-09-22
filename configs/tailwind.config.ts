@@ -3,6 +3,7 @@ import type { Config } from "tailwindcss";
 export default {
   darkMode: ["class"],
   content: ["./apps/frontend/index.html", "./apps/frontend/src/**/*.{js,jsx,ts,tsx}", "./packages/shared/src/**/*.{js,jsx,ts,tsx}"],
+  safelist: ['scene-header-1', 'scene-header-2', 'scene-header-3', 'scene-header-top-line', 'scene-header-container', 'scene-header-combined'],
   theme: {
     extend: {
       borderRadius: {

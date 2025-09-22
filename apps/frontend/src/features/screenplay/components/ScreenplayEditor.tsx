@@ -20,6 +20,7 @@ import { AdvancedClipboardToolbar } from './AdvancedClipboardToolbar';
 import { SmartEditingToolbar } from './SmartEditingToolbar';
 import { AIConfigDialog } from './AIConfigDialog';
 import { CustomStyle, customStylesManager } from '@shared/screenplay/customStylesManager';
+import { applySceneHeaderStyles } from '../utils/applySceneHeaderStyles';
 
 // ============================================================================
 // Constants
@@ -179,6 +180,28 @@ const ScreenplayEditor = () => {
     updateStats(pageCounter);
   }, [updateStats]);
 
+  const applySceneHeaderFormatting = useCallback(() => {
+    if (!editorRef.current) return;
+    applySceneHeaderStyles(
+      editorRef.current,
+      (baseClass) => getFormatStyles(baseClass, selectedFont, selectedSize)
+    );
+  }, [selectedFont, selectedSize]);
+
+  const setEditorContent = useCallback(
+    (html: string) => {
+      if (!editorRef.current) return;
+      editorRef.current.innerHTML = html;
+      applySceneHeaderFormatting();
+      layoutAndPaginate();
+    },
+    [applySceneHeaderFormatting, layoutAndPaginate]
+  );
+
+  useEffect(() => {
+    applySceneHeaderFormatting();
+  }, [applySceneHeaderFormatting]);
+
 
   // Enhanced paste handler with AI processing
   const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -211,7 +234,7 @@ const ScreenplayEditor = () => {
       setProcessingProgress(75);
 
       if (result.success && result.output) {
-        editorRef.current.innerHTML = result.output.html;
+        setEditorContent(result.output.html);
         setImportStats({
           totalLines: result.metadata.linesProcessed,
           averageConfidence: result.metadata.averageConfidence,
@@ -221,54 +244,28 @@ const ScreenplayEditor = () => {
         // Fallback processing
         const { results } = await coordinator.processScript(lines);
         const formattedHTML = results.map(r => r.html).join('');
-        editorRef.current.innerHTML = formattedHTML;
+        setEditorContent(formattedHTML);
       }
 
-      // Re-apply styles with special handling for scene headers
-      const divs = editorRef.current.querySelectorAll('div, span');
-      divs.forEach(div => {
-        const el = div as HTMLElement;
-        if (el.className) {
-          const baseClass = el.className.split(' ')[0];
-
-          // معالجة خاصة لرؤوس المشاهد
-          if (baseClass.startsWith('scene-header')) {
-            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-            Object.assign(el.style, styles);
-
-            // إضافة أنماط CSS مخصصة لرؤوس المشاهد
-            if (baseClass === 'scene-header-1') {
-              el.style.borderTop = '2px solid #333';
-              el.style.borderBottom = '1px solid #999';
-            } else if (baseClass === 'scene-header-3') {
-              el.style.backgroundColor = '#f5f5f5';
-              el.style.borderRadius = '4px';
-            }
-          } else {
-            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-            Object.assign(el.style, styles);
-          }
-        }
-      });
-
       setProcessingProgress(100);
-      layoutAndPaginate();
 
     } catch (error) {
       console.error('Paste processing failed:', error);
       // Fallback to simple paste
       const textData = e.clipboardData.getData('text/plain');
       if (textData) {
-        editorRef.current.innerHTML = textData.split('\n')
-          .map(line => `<div class="action">${line}</div>`)
-          .join('');
-        layoutAndPaginate();
+        setEditorContent(
+          textData
+            .split('\n')
+            .map(line => `<div class="action">${line}</div>`)
+            .join('')
+        );
       }
     } finally {
       setIsProcessing(false);
       setTimeout(() => setProcessingProgress(0), 1000);
     }
-  }, [coordinator, selectedFont, selectedSize, layoutAndPaginate, useAI]);
+  }, [coordinator, setEditorContent, useAI]);
 
   // File import handler
   const handleFileImport = useCallback(async (file: File) => {
@@ -311,7 +308,7 @@ const ScreenplayEditor = () => {
       setProcessingProgress(90);
 
       if (result.success && result.output) {
-        editorRef.current.innerHTML = result.output.html;
+        setEditorContent(result.output.html);
         setImportStats({
           totalLines: result.metadata.linesProcessed,
           averageConfidence: result.metadata.averageConfidence,
@@ -319,35 +316,7 @@ const ScreenplayEditor = () => {
         });
       }
 
-      // Re-apply styles with special handling for scene headers
-      const divs = editorRef.current.querySelectorAll('div, span');
-      divs.forEach(div => {
-        const el = div as HTMLElement;
-        if (el.className) {
-          const baseClass = el.className.split(' ')[0];
-
-          // معالجة خاصة لرؤوس المشاهد
-          if (baseClass.startsWith('scene-header')) {
-            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-            Object.assign(el.style, styles);
-
-            // إضافة أنماط CSS مخصصة لرؤوس المشاهد
-            if (baseClass === 'scene-header-1') {
-              el.style.borderTop = '2px solid #333';
-              el.style.borderBottom = '1px solid #999';
-            } else if (baseClass === 'scene-header-3') {
-              el.style.backgroundColor = '#f5f5f5';
-              el.style.borderRadius = '4px';
-            }
-          } else {
-            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-            Object.assign(el.style, styles);
-          }
-        }
-      });
-
       setProcessingProgress(100);
-      layoutAndPaginate();
 
     } catch (error) {
       console.error('File import failed:', error);
@@ -356,7 +325,7 @@ const ScreenplayEditor = () => {
       setIsProcessing(false);
       setTimeout(() => setProcessingProgress(0), 1000);
     }
-  }, [selectedFont, selectedSize, layoutAndPaginate, useAI]);
+  }, [selectedFont, setEditorContent, useAI]);
 
   // Live typing handler
   const handleInput = useCallback(async (e: React.FormEvent<HTMLDivElement>) => {
@@ -381,12 +350,15 @@ const ScreenplayEditor = () => {
         target.className = result.elementType;
         const styles = getFormatStyles(result.elementType, selectedFont, selectedSize);
         Object.assign(target.style, styles);
+        if (result.elementType.startsWith('scene-header')) {
+          applySceneHeaderFormatting();
+        }
 
       } catch (error) {
         console.warn('Live classification failed:', error);
       }
     }
-  }, [selectedFont, selectedSize]);
+  }, [applySceneHeaderFormatting, selectedFont, selectedSize]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -498,68 +470,7 @@ const ScreenplayEditor = () => {
             font-size: 10pt;
         }
 
-        /* أنماط CSS مُضمنة لرؤوس المشاهد */
-        .scene-header-1 {
-            font-weight: bold !important;
-            text-transform: uppercase !important;
-            font-size: 14pt !important;
-            text-align: right !important;
-            margin: 0 !important;
-            padding: 0.3rem 0 !important;
-            flex: 1 !important;
-        }
-
-        .scene-header-2 {
-            font-style: italic !important;
-            font-size: 12pt !important;
-            text-align: left !important;
-            color: #666 !important;
-            margin: 0 !important;
-            padding: 0.3rem 0 !important;
-            flex: 1 !important;
-        }
-
-        .scene-header-3 {
-            text-align: center !important;
-            font-weight: bold !important;
-            font-size: 13pt !important;
-            margin: 0.8rem 0 0.3rem 0 !important;
-            padding: 0.3rem 0.5rem !important;
-            text-decoration: underline !important;
-            background-color: #f5f5f5 !important;
-            border-radius: 4px !important;
-            border: 1px solid #ddd !important;
-        }
-
-        .scene-header-top-line {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            width: 100% !important;
-            margin: 1rem 0 0.5rem 0 !important;
-            padding: 0.5rem 1rem !important;
-            border: 2px solid #333 !important;
-            background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%) !important;
-            border-radius: 6px !important;
-        }
-
-        .scene-header-container {
-            margin: 1.5rem 0 1rem 0 !important;
-            padding: 1rem !important;
-            border: 2px solid #2c5aa0 !important;
-            border-radius: 8px !important;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-        }
-
-        .scene-header-combined {
-            margin: 1.5rem 0 1rem 0 !important;
-            padding: 1rem !important;
-            border: 2px solid #2c5aa0 !important;
-            border-radius: 8px !important;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
-        }
+        /* تعتمد أنماط scene-header على CSS الأساسي في index.css */
       `}} />
 
       {/* Header */}
@@ -593,12 +504,16 @@ const ScreenplayEditor = () => {
                     <option value="Amiri">Amiri</option>
                     <option value="Courier Prime">Courier Prime</option>
                 </select>
-                <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">
+                <button
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                  className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                  aria-label="تبديل الوضع الليلي"
+                >
                     {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                 </button>
             </div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" data-testid="toolbar-container">
           {/* Mode Toggle */}
           <div className="flex items-center gap-2">
             <button
@@ -643,16 +558,13 @@ const ScreenplayEditor = () => {
               <>
                 <AdvancedClipboardToolbar
                   onImport={(content, metadata) => {
-                    if (editorRef.current) {
-                      editorRef.current.innerHTML = content;
-                      if (metadata) {
-                        setImportStats({
-                          totalLines: metadata.totalLines || 0,
-                          averageConfidence: metadata.averageConfidence || 0,
-                          classificationsUsed: metadata.classificationsUsed || {}
-                        });
-                      }
-                      layoutAndPaginate();
+                    setEditorContent(content);
+                    if (metadata) {
+                      setImportStats({
+                        totalLines: metadata.totalLines || 0,
+                        averageConfidence: metadata.averageConfidence || 0,
+                        classificationsUsed: metadata.classificationsUsed || {}
+                      });
                     }
                   }}
                   onExport={(format) => {
@@ -665,10 +577,7 @@ const ScreenplayEditor = () => {
                   editorRef={editorRef}
                   selectedText={selectedText}
                   onTextUpdate={(newText) => {
-                    if (editorRef.current) {
-                      editorRef.current.innerHTML = newText;
-                      layoutAndPaginate();
-                    }
+                    setEditorContent(newText);
                   }}
                 />
                 <button

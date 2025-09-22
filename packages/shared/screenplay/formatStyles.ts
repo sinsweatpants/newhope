@@ -26,7 +26,11 @@ export const getFormatStyles = (formatType: string, selectedFont = 'Amiri', sele
         textAlign: 'right',
         margin: '0',
         padding: '0.3rem 0',
-        flex: '1'
+        flex: '1',
+        display: 'block',
+        width: '100%',
+        whiteSpace: 'pre-wrap',
+        unicodeBidi: 'plaintext'
       },
       'scene-header-2': {
         fontStyle: 'italic',
@@ -35,14 +39,26 @@ export const getFormatStyles = (formatType: string, selectedFont = 'Amiri', sele
         color: '#666',
         margin: '0',
         padding: '0.3rem 0',
-        flex: '1'
+        flex: '1',
+        display: 'block',
+        width: '100%',
+        whiteSpace: 'pre-wrap',
+        unicodeBidi: 'plaintext'
       },
       'scene-header-3': {
         textAlign: 'center',
         fontWeight: 'bold',
         fontSize: '13pt',
         margin: '0.8rem 0 0.3rem 0',
-        textDecoration: 'underline'
+        textDecoration: 'underline',
+        padding: '0.3rem 0.5rem',
+        border: '1px solid #ddd',
+        borderRadius: '4px',
+        backgroundColor: '#f5f5f5',
+        display: 'block',
+        width: '100%',
+        whiteSpace: 'pre-wrap',
+        unicodeBidi: 'plaintext'
       },
       action: { textAlign: 'right', margin: '0rem 0' },
       'stage-direction': { textAlign: 'right', margin: '0.3rem 0', fontStyle: 'italic', color: '#666' },
