@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './e2e',
+  testDir: './tests/e2e',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -117,8 +117,8 @@ export default defineConfig({
   ],
 
   /* Global setup and teardown */
-  globalSetup: require.resolve('./e2e/global-setup.ts'),
-  globalTeardown: require.resolve('./e2e/global-teardown.ts'),
+  globalSetup: require.resolve('./tests/e2e/global-setup.ts'),
+  globalTeardown: require.resolve('./tests/e2e/global-teardown.ts'),
 
   /* Run your local dev server before starting the tests */
   webServer: process.env.CI ? undefined : {

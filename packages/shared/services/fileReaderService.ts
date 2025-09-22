@@ -3,6 +3,8 @@
  * Supports encoding detection and import hooks
  */
 
+import { ocrService } from './ocrService';
+
 export interface FileProcessingResult {
   text: string;
   metadata: {
@@ -137,7 +139,7 @@ class FileReaderService {
 
       // Fallback to OCR if enabled and PDF has minimal text
       if (options.enableOCR) {
-        const ocrText = await this.processPDFWithOCR(file);
+        const ocrText = await this.processPDFWithOCR(file, options);
         return {
           text: this.cleanExtractedText(ocrText),
           metadata: {
@@ -191,10 +193,26 @@ class FileReaderService {
   /**
    * Process PDF with OCR fallback
    */
-  private async processPDFWithOCR(file: File): Promise<string> {
-    // This will integrate with OCR service when implemented
-    console.warn('OCR processing not yet implemented');
-    return '';
+  private async processPDFWithOCR(
+    file: File,
+    options: FileProcessingOptions
+  ): Promise<string> {
+    try {
+      const result = await ocrService.processFile(file, {
+        language: this.resolveOcrLanguage(options.targetLanguage),
+        preprocessImage: true,
+        fallbackOnLowConfidence: true,
+        outputFormat: 'text'
+      });
+
+      if (!result.text.trim()) {
+        throw new Error('OCR returned empty result for PDF');
+      }
+
+      return result.text;
+    } catch (error) {
+      throw new Error(`OCR processing failed: ${error instanceof Error ? error.message : error}`);
+    }
   }
 
   /**
@@ -282,20 +300,43 @@ class FileReaderService {
     }
 
     try {
-      // This will integrate with OCR service
-      console.warn('Image OCR processing not yet implemented');
+      const ocrResult = await ocrService.processFile(file, {
+        language: this.resolveOcrLanguage(options.targetLanguage),
+        preprocessImage: true,
+        fallbackOnLowConfidence: true,
+        outputFormat: 'text'
+      });
+
+      const cleanedText = this.cleanExtractedText(ocrResult.text);
+      const success = cleanedText.length > 0;
+
       return {
-        text: '',
+        text: cleanedText,
         metadata: {
           ...baseMetadata,
-          extractionMethod: 'ocr-pending',
-          confidence: 0.0
+          extractionMethod: `ocr-${ocrResult.engine}`,
+          confidence: ocrResult.confidence,
+          language: ocrResult.metadata.language || this.resolveOcrLanguage(options.targetLanguage)
         },
-        success: false,
-        error: 'Image OCR not yet implemented'
+        success,
+        ...(success ? {} : { error: 'لم يتمكن OCR من استخراج نص قابل للاستخدام' })
       };
     } catch (error) {
       throw new Error(`Image processing failed: ${error}`);
+    }
+  }
+
+  /**
+   * Resolve OCR language based on user preference
+   */
+  private resolveOcrLanguage(target?: 'ar' | 'en' | 'auto'): string {
+    switch (target) {
+      case 'ar':
+        return 'ara';
+      case 'en':
+        return 'eng';
+      default:
+        return 'ara+eng';
     }
   }
 
