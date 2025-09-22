@@ -444,7 +444,9 @@ export const SmartEditingToolbar: React.FC<SmartEditingToolbarProps> = ({
     // Return appropriate styles based on class
     const baseStyles: Record<string, Record<string, string>> = {
       'basmala': { textAlign: 'center', fontWeight: 'bold' },
-      'scene-header-1': { fontWeight: 'bold', textAlign: 'center', marginTop: '20px' },
+      'scene-header-1': { fontWeight: 'bold', textAlign: 'right', marginTop: '0' },
+      'scene-header-2': { fontStyle: 'italic', textAlign: 'left' },
+      'scene-header-3': { textAlign: 'center', fontWeight: 'bold', textDecoration: 'underline' },
       'character': { fontWeight: 'bold', textAlign: 'center', marginTop: '15px' },
       'dialogue': { marginRight: '40px', marginLeft: '40px' },
       'parenthetical': { textAlign: 'center', fontStyle: 'italic' },

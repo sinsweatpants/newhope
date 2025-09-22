@@ -1,14 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ScreenplayEditor } from './ScreenplayEditor';
+import ScreenplayEditor from './ScreenplayEditor';
 
 // Mock external dependencies
 vi.mock('@shared/screenplay/pipelineProcessor', () => ({
   pipelineProcessor: {
     process: vi.fn(() => ({
-      content: [{ text: 'Test line', format: 'action' }],
-      metadata: { lineCount: 1 }
+      success: true,
+      output: {
+        html: '<div class="scene-header-3">موقع الاختبار</div>',
+        elements: [],
+        metadata: { totalElements: 1, structure: { 'scene-header-3': 1 } }
+      },
+      stages: [],
+      totalDuration: 1,
+      metadata: {
+        linesProcessed: 1,
+        averageConfidence: 0.9,
+        classificationsUsed: { 'scene-header-3': 1 }
+      }
     }))
   }
 }));
@@ -22,13 +33,23 @@ vi.mock('@shared/screenplay/geminiCoordinator', () => ({
 
 vi.mock('@shared/screenplay/advancedClassifier', () => ({
   advancedClassifier: {
+    classify: vi.fn(async () => ({
+      html: '<div class="scene-header-3">موقع الاختبار</div>',
+      elementType: 'scene-header-3',
+      confidence: 0.9
+    })),
+    classifyAdvanced: vi.fn(async () => ({
+      classification: 'scene-header-3',
+      confidence: 0.9
+    })),
     classifyLine: vi.fn(() => 'action')
   }
 }));
 
 vi.mock('@shared/services/fileReaderService', () => ({
   fileReaderService: {
-    readFile: vi.fn()
+    extractTextFromFile: vi.fn(async () => 'مشهد 1 - ليل - داخلي\nمستشفى المدينة'),
+    processFile: vi.fn()
   }
 }));
 
@@ -41,6 +62,7 @@ vi.mock('@shared/services/ocrService', () => ({
 vi.mock('@shared/screenplay/customStylesManager', () => ({
   customStylesManager: {
     getStyles: vi.fn(() => []),
+    getAllStyles: vi.fn(() => []),
     saveStyle: vi.fn(),
     loadStyle: vi.fn()
   }
@@ -58,7 +80,7 @@ describe('ScreenplayEditor', () => {
 
     // Check for main editor elements
     expect(screen.getByRole('textbox')).toBeInTheDocument();
-    expect(screen.getByText('DoodleDuel - محرر السيناريو')).toBeInTheDocument();
+    expect(screen.getByText('محرر السيناريو المتقدم')).toBeInTheDocument();
   });
 
   it('shows dark mode toggle', () => {
