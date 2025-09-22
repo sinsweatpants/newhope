@@ -1,3 +1,4 @@
+
 import { Patterns } from './patterns';
 import { ActionType, type AgentContext, type AgentResult, type FormattingAgent } from './types';
 
@@ -28,8 +29,9 @@ export function compileHtml(tag: string, cls: string, text: string, getFormatSty
 
 // Formatting Agents
 export const BasmalaAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  if (Patterns.basmala.test(line)) {
-    const html = compileHtml("div", "basmala", line.trim(), getFormatStylesFn);
+  const trimmedLine = line.trim(); // Trim the line before testing the pattern
+  if (Patterns.basmala.test(trimmedLine)) {
+    const html = compileHtml("div", "basmala", trimmedLine, getFormatStylesFn);
     ctx.inDialogue = false;
     return { html, processed: true, confidence: 1.0, elementType: "basmala", agentUsed: "BasmalaAgent", originalLine: line, context: ctx };
   }
@@ -91,13 +93,17 @@ export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStyl
             // Let SyriacDialogueAgent handle this
             return null;
         }
-        return { html: compileHtml("div", "dialogue", line, getFormatStylesFn), processed: true, confidence: 0.8, elementType: "continued-dialogue", agentUsed: "CharacterDialogueAgent", originalLine: line, context: ctx };
+        // If the line doesn't start with an action keyword, it's continued dialogue.
+        if (!Patterns.actionKeywords.test(line) && !Patterns.actionBullet.test(line)) {
+            return { html: compileHtml("div", "dialogue", line, getFormatStylesFn), processed: true, confidence: 0.8, elementType: "continued-dialogue", agentUsed: "CharacterDialogueAgent", originalLine: line, context: ctx };
+        }
     }
     return null;
 }
 
 export const ActionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-    if (Patterns.actionKeywords.test(line) || Patterns.actionBullet.test(line)) {
+    // A line is an action if it starts with a keyword OR a bullet, BUT it's NOT a character line.
+    if (Patterns.actionKeywords.test(line) || (Patterns.actionBullet.test(line) && !Patterns.characterNames.test(line))) {
         const html = compileHtml("div", `action`, line, getFormatStylesFn);
         ctx.inDialogue = false;
         return { html, processed: true, confidence: 0.85, elementType: `action`, agentUsed: "ActionAgent", originalLine: line, context: ctx };
@@ -123,15 +129,7 @@ export const DirectorNotesAgent: FormattingAgent = (line, ctx, getFormatStylesFn
   return null;
 }
 
-export const StageDirectionsAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
-  if (Patterns.stageDirections.test(line)) {
-    const cleanLine = line.replace(/^\s*-\s*/, "").trim();
-    const html = compileHtml("div", "stage-direction", cleanLine, getFormatStylesFn);
-    ctx.inDialogue = false;
-    return { html, processed: true, confidence: 0.9, elementType: "stage-direction", agentUsed: "StageDirectionsAgent", originalLine: line, context: ctx };
-  }
-  return null;
-}
+// StageDirectionsAgent is removed as its functionality is merged into ActionAgent
 
 export const SyriacDialogueAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
   // Check for Syriac text with Arabic translation in parentheses

@@ -1,5 +1,6 @@
+
 import type { AgentContext, AgentResult, FormattingAgent } from './types';
-import { BasmalaAgent, TransitionAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, StageDirectionsAgent, SyriacDialogueAgent, CutTransitionAgent, DefaultAgent } from './agents';
+import { BasmalaAgent, TransitionAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, SyriacDialogueAgent, CutTransitionAgent, DefaultAgent } from './agents';
 
 // ScreenplayCoordinator Class
 export class ScreenplayCoordinator {
@@ -8,7 +9,17 @@ export class ScreenplayCoordinator {
 
   constructor(getFormatStylesFn: (formatType: string, font?: string, size?: string) => React.CSSProperties) {
     this.getFormatStylesFn = getFormatStylesFn;
-    this.agents = [ BasmalaAgent, CutTransitionAgent, TransitionAgent, StageDirectionsAgent, SyriacDialogueAgent, DirectorNotesAgent, CharacterDialogueAgent, SceneHeaderAgent, ActionAgent, DefaultAgent ];
+    this.agents = [
+      BasmalaAgent,
+      CutTransitionAgent,
+      TransitionAgent,
+      SceneHeaderAgent,
+      DirectorNotesAgent,
+      CharacterDialogueAgent, // Runs first to identify dialogue lines
+      ActionAgent,            // Runs after, to catch any non-dialogue lines as actions
+      SyriacDialogueAgent,
+      DefaultAgent
+    ];
   }
 
   processLine(line: string, context: AgentContext = {}): AgentResult {

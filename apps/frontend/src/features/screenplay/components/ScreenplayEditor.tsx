@@ -12,8 +12,7 @@ import { ParagraphToolbar } from './ParagraphToolbar';
 import { StylesToolbar } from './StylesToolbar';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { StylesDialog } from './StylesDialog';
-import { CustomStyle } from '@shared/screenplay/types';
-import { customStylesManager } from '@shared/screenplay/customStylesManager';
+import { CustomStyle, customStylesManager } from '@shared/screenplay/customStylesManager';
 
 // ============================================================================
 // Constants
@@ -23,8 +22,12 @@ const PIXELS_PER_CM = 96 / 2.54; // Standard DPI conversion
 // ============================================================================
 // Ruler Component
 // ============================================================================
-const Ruler = ({ orientation = 'horizontal', isDarkMode }) => {
-  const length = orientation === 'horizontal' ? 21 * PIXELS_PER_CM : 29.7 * PIXELS_PER_CM;
+interface RulerProps {
+  orientation?: 'horizontal' | 'vertical';
+  isDarkMode: boolean;
+}
+
+const Ruler: React.FC<RulerProps> = ({ orientation = 'horizontal', isDarkMode }) => {
   const lengthInCm = Math.floor(orientation === 'horizontal' ? 21 : 29.7);
   const numbers = [];
   for (let i = 1; i <= lengthInCm; i++) {
@@ -49,7 +52,7 @@ const ScreenplayEditor = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedFont, setSelectedFont] = useState('Amiri');
-  const [selectedSize, setSelectedSize] = useState('12pt');
+  const [selectedSize] = useState('12pt');
   const [documentStats, setDocumentStats] = useState({ pages: 1, words: 0 });
   const layoutTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -229,6 +232,9 @@ const ScreenplayEditor = () => {
           font-family: '${selectedFont}', monospace;
           font-size: ${selectedSize};
         }
+        .bismillah {
+          text-align: center;
+        }
         .page-break {
             height: 3.8cm;
             position: relative;
@@ -288,7 +294,10 @@ const ScreenplayEditor = () => {
                   onPaste={handlePaste}
                   className="page-content"
                   data-testid="screenplay-editor"
-              />
+              >
+                <div className="bismillah">بسم الله الرحمن الرحيم</div>
+                <div className="bismillah">{'{'}بسم الله الرحمن الرحيم {'}'}</div>
+              </div>
           </div>
         </div>
       </div>
@@ -301,13 +310,13 @@ const ScreenplayEditor = () => {
       <FindReplaceDialog 
         isOpen={isFindReplaceOpen} 
         onClose={() => setFindReplaceOpen(false)} 
-        onFind={(term) => {
+        onFind={(_term) => {
           // Implement find logic
         }}
-        onReplace={(term, replacement) => {
+        onReplace={(_term, _replacement) => {
           // Implement replace logic
         }}
-        onReplaceAll={(term, replacement) => {
+        onReplaceAll={(_term, _replacement) => {
           // Implement replace all logic
         }}
       />
