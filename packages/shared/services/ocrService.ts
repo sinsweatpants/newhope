@@ -274,8 +274,12 @@ class OCRService {
           bestResult = result;
         }
 
-        // Stop if confidence is good enough
-        if (result.confidence > (options.confidenceThreshold || this.DEFAULT_CONFIDENCE_THRESHOLD)) {
+        const meetsThreshold =
+          result.confidence >= (options.confidenceThreshold || this.DEFAULT_CONFIDENCE_THRESHOLD) &&
+          result.text.trim().length > 0;
+
+        if (meetsThreshold) {
+          bestResult = result;
           break;
         }
 
@@ -364,24 +368,111 @@ class OCRService {
   ): Promise<OCRResult> {
     try {
       const scribe = await this.loadScribe();
-
       if (!scribe) {
         throw new Error('Scribe.js not available');
       }
 
-      // Scribe.js implementation would go here
-      // For now, return placeholder
-      return {
-        text: '',
-        confidence: 0,
-        engine: 'scribe',
-        processingTime: 0,
-        metadata: { warnings: ['Scribe.js not yet implemented'] }
-      };
+      const recognizer =
+        typeof scribe === 'function'
+          ? scribe
+          : typeof scribe.recognize === 'function'
+            ? scribe.recognize.bind(scribe)
+            : typeof scribe.default === 'function'
+              ? scribe.default
+              : typeof scribe.default?.recognize === 'function'
+                ? scribe.default.recognize.bind(scribe.default)
+                : null;
 
+      if (!recognizer) {
+        throw new Error('Unsupported Scribe.js interface');
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await recognizer(arrayBuffer, {
+        language: options.language || 'ara+eng',
+        format: 'text'
+      });
+
+      const text = this.cleanExtractedText(result?.text || '');
+      const confidence = typeof result?.confidence === 'number' ? result.confidence : 0.65;
+
+      if (text.trim().length > 0) {
+        return {
+          text,
+          confidence,
+          engine: 'scribe',
+          processingTime: 0,
+          metadata: {
+            language: options.language,
+            warnings: result?.warnings ? [].concat(result.warnings) : undefined
+          }
+        };
+      }
+
+      throw new Error('Scribe.js returned empty text');
     } catch (error) {
-      throw new Error(`Scribe processing failed: ${error}`);
+      console.warn('[OCRService] Scribe.js fallback to backend:', error);
+      return this.invokeBackendFallback(file, options, error instanceof Error ? error.message : String(error));
     }
+  }
+
+  private async invokeBackendFallback(
+    file: File,
+    options: OCROptions,
+    reason?: string
+  ): Promise<OCRResult> {
+    const payload = await this.fileToDataUrl(file);
+
+    const response = await fetch('/api/ocr/process', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        fileData: payload,
+        originalName: file.name,
+        mimetype: file.type,
+        options: {
+          ...options,
+          engines: ['scribe', 'tesseract'],
+          preprocessImage: options.preprocessImage ?? true
+        }
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend OCR fallback failed with status ${response.status}`);
+    }
+
+    const json = await response.json();
+
+    if (!json.success) {
+      throw new Error(json.error || 'Backend OCR fallback returned an error');
+    }
+
+    const warnings: string[] = [];
+    if (reason) warnings.push(`Local Scribe unavailable: ${reason}`);
+    if (json.data?.metadata?.warnings) {
+      warnings.push(...json.data.metadata.warnings);
+    }
+
+    return {
+      text: json.data?.text ?? '',
+      confidence: json.data?.confidence ?? 0,
+      engine: json.data?.engine ?? 'scribe',
+      processingTime: json.data?.processingTime ?? 0,
+      metadata: {
+        ...json.data?.metadata,
+        warnings: warnings.length ? warnings : undefined
+      }
+    } as OCRResult;
+  }
+
+  private async fileToDataUrl(file: File): Promise<string> {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
   }
 
   /**

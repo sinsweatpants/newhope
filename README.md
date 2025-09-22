@@ -4,60 +4,66 @@
 
 ## المتطلبات المسبقة
 
-- Node.js 18 أو أحدث
-- npm 9 أو أحدث
-- Docker (اختياري للتشغيل بالحاويات)
+| الأداة | الإصدار المقترح |
+|-------|----------------|
+| Node.js | ≥ 18.17 (لاستخدام `fetch` المدمجة ودعم مكتبة `sharp`) |
+| npm | ≥ 9.0 |
+| Docker | اختياري للتشغيل داخل حاويات |
 
 ## خطوات الإعداد والتشغيل
 
 ```bash
-# تثبيت الاعتمادات
+# 1) تثبيت الاعتمادات لجميع الحزم داخل الـ monorepo
 npm install
 
-# تشغيل الواجهة الأمامية (Vite)
+# 2) تشغيل الواجهة الأمامية (Vite)
 npm run dev:frontend
 
-# تشغيل الواجهة الخلفية (Express)
+# 3) تشغيل الخادم الخلفي (Express/Firebase Functions)
 npm run dev:backend
 
-# بناء المشروع الكامل (واجهة + خلفية)
+# 4) بناء واجهة المستخدم والخلفية في خطوة واحدة
 npm run build
 
-# تشغيل نسخة الإنتاج بعد البناء
+# 5) تشغيل نسخة الإنتاج بعد البناء
 npm start
 ```
 
+> **ملاحظة:** واجهات `/api/*` تستخدم الخادم الخلفي. أثناء التطوير شغّل الأمرين `npm run dev:frontend` و `npm run dev:backend` معًا أو عيّن المتغير `VITE_API_BASE_URL` للإشارة إلى خدمة منشورة.
+
 ## متغيرات البيئة
 
-انسخ الملف `.env.example` إلى `.env` ثم عدّل القيم بما يناسب بيئتك. أهم المتغيرات المقسّمة حسب الفئة:
+انسخ الملف `.env.example` إلى `.env` ثم عدّل القيم بما يناسب بيئتك:
 
 - **قاعدة البيانات**: `DATABASE_URL`, `POSTGRES_*`
-- **Redis**: `REDIS_URL`, `REDIS_HOST`, `REDIS_PORT`
-- **Firebase**: `FIREBASE_*`
-- **خدمات الذكاء الاصطناعي**: `GEMINI_API_KEY`, `OPENAI_API_KEY`
-- **المصادقة**: `JWT_SECRET`, `SESSION_SECRET`
-- **البريد الإلكتروني**: `SMTP_*`
-- **إعدادات OCR**: `TESSERACT_CACHE_SIZE`, `OCR_TIMEOUT`
-- **إعدادات الأداء والأمان**: `RATE_LIMIT_*`, `CSP_*`, `LOG_*`
+- **Redis والطوابير**: `REDIS_URL`, `BULL_*`
+- **Firebase**: مفاتيح الخدمة (`FIREBASE_*`, `GOOGLE_APPLICATION_CREDENTIALS`)
+- **خدمات الذكاء الاصطناعي**: `GEMINI_API_KEY` (في حال تركه فارغًا سيعمل النظام بالتصنيف المحلي فقط)
+- **الأمان والمصادقة**: `JWT_SECRET`, `SESSION_SECRET`, إعدادات حدود المعدل `RATE_LIMIT_*`
+- **ضبط OCR**: مثل `OCR_MAX_PAGES`, `OCR_CONFIDENCE_THRESHOLD`, مسارات بيانات Tesseract
 
-لمزيد من التفاصيل راجع `.env.example` حيث تم توثيق جميع المتغيرات المتاحة.
-
-## الاختبارات
+## الاختبارات وتشغيل أدوات التحقق
 
 ```bash
-# تشغيل اختبارات الوحدات والتكامل (Vitest)
+# اختبارات الوحدات والتكامل (Vitest)
 npm test
 
-# تشغيل تغطية الاختبارات
+# تغطية الاختبارات عبر Vitest
 npm run test:coverage
 
-# تشغيل اختبارات End-to-End (Playwright)
+# اختبارات End-to-End (Playwright) — تتطلب تشغيل الخوادم التطويرية
 npm run test:e2e
 ```
 
-- اختبارات الوحدات تغطي الخدمات الأساسية مثل `ocrService`, `classificationService`, و `geminiService`.
-- اختبارات التكامل تتحقق من ربط الخدمات مع واجهات API (`/api/ocr/process`, `/api/screenplay/classify`).
-- اختبارات E2E (Playwright) تتحقق من تدفق المستخدم في الواجهة الأمامية (الكتابة، استيراد الملفات، التحكم بخيارات الذكاء الاصطناعي).
+- اختبارات الوحدات تغطي خدمات `ocrService`, `classificationService`, `geminiService` بالإضافة إلى وحدات الأداء (`PerformanceOptimizer`, `CacheManager`, `MemoryManager`).
+- اختبارات التكامل تضمن نجاح واجهات `/api/ocr/process` و `/api/screenplay/classify` باستخدام طبقة OCR الخلفية الجديدة وخدمات التصنيف.
+- اختبارات E2E تم توسيعها لتشمل التدفق الكامل: لصق النص، استيراد الملفات، تنفيذ OCR، ثم إعادة استخدام الناتج في واجهة التصنيف.
+
+## ملاحظات حول البنية الحالية والحدود المعروفة
+
+- تم إنشاء طبقة OCR خاصة بالخادم تعتمد على **Tesseract.js** (بيئة Node) مع تحويل صفحات PDF إلى صور عبر `sharp`. عند انخفاض الثقة أو فشل المحرك يتم التحويل تلقائيًا إلى **Scribe.js** أو استدعاء الخادم كـ fallback موثوق.
+- بعض أدوات الأداء (مثل `PerformanceOptimizer`) لا تزال تعتمد على بيئة المتصفح (`window`, `document`). تم عزل الخدمات الخلفية عنها، لكن يجب مراعاة ذلك عند تشغيل الشيفرة داخل بيئات Node صرفة.
+- في حال غياب مفتاح `GEMINI_API_KEY` يعمل التصنيف بوضع محلي مع إرجاع بيانات إحصائية تشير إلى الاعتماد على الحل المحلي بدلاً من الفشل.
 
 ## تشغيل Docker
 
@@ -81,7 +87,7 @@ curl -X POST http://localhost:5000/api/ocr/process \
         "fileData": "data:image/png;base64,BASE64_IMAGE_DATA",
         "originalName": "scene.png",
         "mimetype": "image/png",
-        "options": { "language": "ara+eng" }
+        "options": { "language": "ara+eng", "confidenceThreshold": 0.7 }
       }'
 
 # تصنيف نص سيناريو

@@ -2,10 +2,9 @@
 
 import express from 'express';
 import type { Server } from 'http';
-import { beforeAll, afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterAll, describe, expect, it } from 'vitest';
+import sharp from 'sharp';
 import { registerRoutes } from '@backend/routes';
-import { ocrService } from '@shared/services/ocrService';
-import { classificationService } from '@shared/services/classificationService';
 
 describe('API routes integration', () => {
   const app = express();
@@ -25,33 +24,32 @@ describe('API routes integration', () => {
     }
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
   afterAll(async () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });
 
   it('delegates OCR processing to ocrService', async () => {
-    const mockResult = {
-      text: 'Sample OCR Text',
-      confidence: 0.91,
-      engine: 'tesseract' as const,
-      processingTime: 250,
-      metadata: { language: 'eng' }
-    };
-
-    const ocrSpy = vi.spyOn(ocrService, 'processFile').mockResolvedValue(mockResult);
+    const imageBuffer = await sharp({
+      text: {
+        text: 'SCENE 1',
+        font: 'sans',
+        align: 'center',
+        width: 512,
+        height: 128,
+        rgba: true
+      }
+    })
+      .png()
+      .toBuffer();
 
     const response = await fetch(`${baseUrl}/api/ocr/process`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        fileData: Buffer.from('dummy').toString('base64'),
-        originalName: 'image.png',
+        fileData: `data:image/png;base64,${imageBuffer.toString('base64')}`,
+        originalName: 'scene.png',
         mimetype: 'image/png',
-        options: { language: 'eng' }
+        options: { language: 'eng', preprocessImage: true }
       })
     });
 
@@ -59,31 +57,25 @@ describe('API routes integration', () => {
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
-    expect(payload.data.text).toBe('Sample OCR Text');
-    expect(ocrSpy).toHaveBeenCalledOnce();
+    expect(payload.data.text).toContain('SCENE');
+    expect(payload.data.confidence).toBeGreaterThan(0);
   });
 
   it('classifies screenplay lines through classificationService', async () => {
-    const mockClassification = {
-      classification: 'action',
-      confidence: 0.87,
-      source: 'local' as const,
-      processingTime: 12
-    };
-
-    const classifySpy = vi.spyOn(classificationService, 'classify').mockResolvedValue(mockClassification as any);
-
     const response = await fetch(`${baseUrl}/api/screenplay/classify`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text: 'INT. STUDIO - DAY' })
+      body: JSON.stringify({
+        text: 'مشهد 1 - نهار',
+        options: { useAI: false }
+      })
     });
 
     const payload = await response.json();
 
     expect(response.status).toBe(200);
     expect(payload.success).toBe(true);
-    expect(payload.data.classification).toBe('action');
-    expect(classifySpy).toHaveBeenCalledOnce();
+    expect(payload.data.classification).toBe('scene-header-2');
+    expect(payload.data.source).toBeDefined();
   });
 });
