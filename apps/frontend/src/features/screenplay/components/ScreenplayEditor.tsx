@@ -3,7 +3,11 @@ import {
   Sun, Moon
 } from 'lucide-react';
 
-import { ScreenplayCoordinator } from '@shared/screenplay/coordinator';
+import { pipelineProcessor } from '@shared/screenplay/pipelineProcessor';
+import { geminiCoordinator } from '@shared/screenplay/geminiCoordinator';
+import { advancedClassifier } from '@shared/screenplay/advancedClassifier';
+import { fileReaderService } from '@shared/services/fileReaderService';
+import { ocrService } from '@shared/services/ocrService';
 import { getFormatStyles } from '@shared/screenplay/formatStyles';
 import { ClipboardToolbar } from './ClipboardToolbar';
 import { EditingToolbar } from './EditingToolbar';
@@ -12,6 +16,9 @@ import { ParagraphToolbar } from './ParagraphToolbar';
 import { StylesToolbar } from './StylesToolbar';
 import { FindReplaceDialog } from './FindReplaceDialog';
 import { StylesDialog } from './StylesDialog';
+import { AdvancedClipboardToolbar } from './AdvancedClipboardToolbar';
+import { SmartEditingToolbar } from './SmartEditingToolbar';
+import { AIConfigDialog } from './AIConfigDialog';
 import { CustomStyle, customStylesManager } from '@shared/screenplay/customStylesManager';
 
 // ============================================================================
@@ -62,9 +69,65 @@ const ScreenplayEditor = () => {
   const [showFormatting, setShowFormatting] = useState(false);
   const [isStylesDialogOpen, setStylesDialogOpen] = useState(false);
   const [customStyles, setCustomStyles] = useState<CustomStyle[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [importStats, setImportStats] = useState<{
+    totalLines: number;
+    averageConfidence: number;
+    classificationsUsed: Record<string, number>;
+  } | null>(null);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [useAI, setUseAI] = useState(true);
+  const [showAIConfig, setShowAIConfig] = useState(false);
+  const [currentMode, setCurrentMode] = useState<'basic' | 'advanced'>('basic');
 
+  // Initialize AI coordinator
+  useEffect(() => {
+    const apiKey = localStorage.getItem('gemini-api-key');
+    if (apiKey) {
+      setGeminiApiKey(apiKey);
+      geminiCoordinator.setApiKey(apiKey);
+    }
+  }, []);
 
-  const coordinator = useMemo(() => new ScreenplayCoordinator((type, font, size) => getFormatStyles(type, font, size)), []);
+  const coordinator = useMemo(() => ({
+    processScript: async (lines: string[], options = {}) => {
+      const context = {
+        importType: 'paste' as const,
+        useAI,
+        batchMode: lines.length > 10,
+        preserveFormatting: true,
+        ...options
+      };
+
+      const result = await pipelineProcessor.process(lines, context);
+
+      if (result.success && result.output) {
+        return {
+          results: result.output.elements?.map((element: any) => ({
+            html: `<div class="${element.className}" ${Object.entries(element.attributes).map(([k, v]) => `${k}="${v}"`).join(' ')}>${element.content}</div>`,
+            classification: element.className,
+            confidence: 0.9
+          })) || [],
+          metadata: result.metadata
+        };
+      }
+
+      // Fallback to simple processing
+      const simpleResults = await Promise.all(
+        lines.map(async (line) => {
+          const agentResult = await advancedClassifier.classify(line);
+          return {
+            html: agentResult.html,
+            classification: agentResult.elementType,
+            confidence: agentResult.confidence
+          };
+        })
+      );
+
+      return { results: simpleResults, metadata: {} };
+    }
+  }), [useAI]);
 
   const updateStats = useCallback((pageCount: number) => {
     if (editorRef.current) {
@@ -116,30 +179,181 @@ const ScreenplayEditor = () => {
   }, [updateStats]);
 
 
-  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+  // Enhanced paste handler with AI processing
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const textData = e.clipboardData.getData('text/plain');
-    if (!textData || !editorRef.current) return;
-    
-    const lines = textData.split('\n');
-    const { results } = coordinator.processScript(lines);
-    const formattedHTML = results.map(r => r.html).join('');
-    
-    editorRef.current.innerHTML = formattedHTML;
+    if (!editorRef.current) return;
 
-    // Re-apply styles after paste (FIX for scene headers)
-    const divs = editorRef.current.querySelectorAll('div, span');
-    divs.forEach(div => {
+    setIsProcessing(true);
+    setProcessingProgress(0);
+
+    try {
+      const textData = e.clipboardData.getData('text/plain');
+      if (!textData) return;
+
+      const lines = textData.split('\n').filter(line => line.trim());
+      if (lines.length === 0) return;
+
+      setProcessingProgress(25);
+
+      // Process with advanced pipeline
+      const context = {
+        importType: 'paste' as const,
+        useAI,
+        batchMode: lines.length > 10,
+        preserveFormatting: true
+      };
+
+      setProcessingProgress(50);
+      const result = await pipelineProcessor.process(lines, context);
+
+      setProcessingProgress(75);
+
+      if (result.success && result.output) {
+        editorRef.current.innerHTML = result.output.html;
+        setImportStats({
+          totalLines: result.metadata.linesProcessed,
+          averageConfidence: result.metadata.averageConfidence,
+          classificationsUsed: result.metadata.classificationsUsed
+        });
+      } else {
+        // Fallback processing
+        const { results } = await coordinator.processScript(lines);
+        const formattedHTML = results.map(r => r.html).join('');
+        editorRef.current.innerHTML = formattedHTML;
+      }
+
+      // Re-apply styles
+      const divs = editorRef.current.querySelectorAll('div, span');
+      divs.forEach(div => {
         const el = div as HTMLElement;
         if (el.className) {
-            const baseClass = el.className.split(' ')[0];
-            const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
-            Object.assign(el.style, styles);
+          const baseClass = el.className.split(' ')[0];
+          const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+          Object.assign(el.style, styles);
         }
-    });
+      });
 
-    layoutAndPaginate();
-  }, [coordinator, selectedFont, selectedSize, layoutAndPaginate]);
+      setProcessingProgress(100);
+      layoutAndPaginate();
+
+    } catch (error) {
+      console.error('Paste processing failed:', error);
+      // Fallback to simple paste
+      const textData = e.clipboardData.getData('text/plain');
+      if (textData) {
+        editorRef.current.innerHTML = textData.split('\n')
+          .map(line => `<div class="action">${line}</div>`)
+          .join('');
+        layoutAndPaginate();
+      }
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setProcessingProgress(0), 1000);
+    }
+  }, [coordinator, selectedFont, selectedSize, layoutAndPaginate, useAI]);
+
+  // File import handler
+  const handleFileImport = useCallback(async (file: File) => {
+    if (!editorRef.current) return;
+
+    setIsProcessing(true);
+    setProcessingProgress(0);
+
+    try {
+      setProcessingProgress(20);
+
+      // Extract text from file
+      const extractedText = await fileReaderService.extractTextFromFile(file, {
+        enableOCR: true,
+        preserveFormatting: true,
+        targetLanguage: 'ar'
+      });
+
+      setProcessingProgress(40);
+
+      if (!extractedText.trim()) {
+        throw new Error('No text could be extracted from the file');
+      }
+
+      const lines = extractedText.split('\n').filter(line => line.trim());
+
+      setProcessingProgress(60);
+
+      // Process with pipeline
+      const context = {
+        importType: 'file' as const,
+        filename: file.name,
+        useAI,
+        batchMode: true,
+        preserveFormatting: true
+      };
+
+      const result = await pipelineProcessor.process(lines, context);
+
+      setProcessingProgress(90);
+
+      if (result.success && result.output) {
+        editorRef.current.innerHTML = result.output.html;
+        setImportStats({
+          totalLines: result.metadata.linesProcessed,
+          averageConfidence: result.metadata.averageConfidence,
+          classificationsUsed: result.metadata.classificationsUsed
+        });
+      }
+
+      // Re-apply styles
+      const divs = editorRef.current.querySelectorAll('div, span');
+      divs.forEach(div => {
+        const el = div as HTMLElement;
+        if (el.className) {
+          const baseClass = el.className.split(' ')[0];
+          const styles = getFormatStyles(baseClass, selectedFont, selectedSize);
+          Object.assign(el.style, styles);
+        }
+      });
+
+      setProcessingProgress(100);
+      layoutAndPaginate();
+
+    } catch (error) {
+      console.error('File import failed:', error);
+      alert(`فشل في استيراد الملف: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+    } finally {
+      setIsProcessing(false);
+      setTimeout(() => setProcessingProgress(0), 1000);
+    }
+  }, [selectedFont, selectedSize, layoutAndPaginate, useAI]);
+
+  // Live typing handler
+  const handleInput = useCallback(async (e: React.FormEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (!target || target.tagName !== 'DIV') return;
+
+    const text = target.textContent || '';
+    if (text.trim().length === 0) return;
+
+    // Only classify on Enter or when line seems complete
+    if (text.endsWith('\n') || text.length > 50) {
+      try {
+        const context = {
+          linePosition: 'middle' as const,
+          isTyping: true,
+          isInstant: true
+        };
+
+        const result = await advancedClassifier.classify(text.trim(), context);
+
+        // Update element class and styles
+        target.className = result.elementType;
+        const styles = getFormatStyles(result.elementType, selectedFont, selectedSize);
+        Object.assign(target.style, styles);
+
+      } catch (error) {
+        console.warn('Live classification failed:', error);
+      }
+    }
+  }, [selectedFont, selectedSize]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -255,9 +469,31 @@ const ScreenplayEditor = () => {
       {/* Header */}
       <div className="flex-shrink-0 px-4 py-2 shadow-sm z-30 bg-gray-100 dark:bg-gray-700">
         <div className="flex justify-between items-center mb-2">
-            <h1 className="text-lg font-bold" style={{fontFamily: 'Amiri'}}>محرر السيناريو</h1>
+            <h1 className="text-lg font-bold" style={{fontFamily: 'Amiri'}}>محرر السيناريو المتقدم</h1>
             <div className="flex items-center gap-2">
-                 <select value={selectedFont} onChange={e => setSelectedFont(e.target.value)} className="p-1 border rounded bg-white dark:bg-gray-600">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm">AI:</label>
+                  <input
+                    type="checkbox"
+                    checked={useAI}
+                    onChange={(e) => setUseAI(e.target.checked)}
+                    className="rounded"
+                  />
+                </div>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt,.rtf,.png,.jpg,.jpeg"
+                  onChange={(e) => e.target.files?.[0] && handleFileImport(e.target.files[0])}
+                  className="hidden"
+                  id="file-import"
+                />
+                <label
+                  htmlFor="file-import"
+                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
+                >
+                  استيراد ملف
+                </label>
+                <select value={selectedFont} onChange={e => setSelectedFont(e.target.value)} className="p-1 border rounded bg-white dark:bg-gray-600">
                     <option value="Amiri">Amiri</option>
                     <option value="Courier Prime">Courier Prime</option>
                 </select>
@@ -266,18 +502,89 @@ const ScreenplayEditor = () => {
                 </button>
             </div>
         </div>
-        <div className="flex items-center space-x-2">
-            <ClipboardToolbar isFormatPainterActive={isFormatPainterActive} toggleFormatPainter={toggleFormatPainter} />
-            <FontToolbar handleColorChange={handleColorChange} handleHighlightChange={handleHighlightChange} />
-            <ParagraphToolbar showFormatting={showFormatting} toggleShowFormatting={toggleShowFormatting} />
-            <StylesToolbar 
-                customStyles={customStyles} 
-                applyStyle={applyStyle} 
-                setStylesDialogOpen={setStylesDialogOpen} 
-                isStylesDialogOpen={isStylesDialogOpen}
-                onStylesUpdate={onStylesUpdate}
-            />
-            <EditingToolbar setFindReplaceOpen={setFindReplaceOpen} />
+        <div className="flex items-center justify-between">
+          {/* Mode Toggle */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentMode('basic')}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                currentMode === 'basic'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500'
+              }`}
+            >
+              أساسي
+            </button>
+            <button
+              onClick={() => setCurrentMode('advanced')}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                currentMode === 'advanced'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500'
+              }`}
+            >
+              متقدم
+            </button>
+          </div>
+
+          {/* Toolbars */}
+          <div className="flex items-center space-x-2">
+            {currentMode === 'basic' ? (
+              <>
+                <ClipboardToolbar isFormatPainterActive={isFormatPainterActive} toggleFormatPainter={toggleFormatPainter} />
+                <FontToolbar handleColorChange={handleColorChange} handleHighlightChange={handleHighlightChange} />
+                <ParagraphToolbar showFormatting={showFormatting} toggleShowFormatting={toggleShowFormatting} />
+                <StylesToolbar
+                    customStyles={customStyles}
+                    applyStyle={applyStyle}
+                    setStylesDialogOpen={setStylesDialogOpen}
+                    isStylesDialogOpen={isStylesDialogOpen}
+                    onStylesUpdate={onStylesUpdate}
+                />
+                <EditingToolbar setFindReplaceOpen={setFindReplaceOpen} />
+              </>
+            ) : (
+              <>
+                <AdvancedClipboardToolbar
+                  onImport={(content, metadata) => {
+                    if (editorRef.current) {
+                      editorRef.current.innerHTML = content;
+                      if (metadata) {
+                        setImportStats({
+                          totalLines: metadata.totalLines || 0,
+                          averageConfidence: metadata.averageConfidence || 0,
+                          classificationsUsed: metadata.classificationsUsed || {}
+                        });
+                      }
+                      layoutAndPaginate();
+                    }
+                  }}
+                  onExport={(format) => {
+                    // Handle export
+                    console.log('Export to:', format);
+                  }}
+                  isProcessing={isProcessing}
+                />
+                <SmartEditingToolbar
+                  editorRef={editorRef}
+                  selectedText={selectedText}
+                  onTextUpdate={(newText) => {
+                    if (editorRef.current) {
+                      editorRef.current.innerHTML = newText;
+                      layoutAndPaginate();
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => setShowAIConfig(true)}
+                  className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
+                  title="إعدادات الذكاء الاصطناعي"
+                >
+                  <Brain size={18} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -287,11 +594,12 @@ const ScreenplayEditor = () => {
           <Ruler orientation="horizontal" isDarkMode={isDarkMode} />
           <Ruler orientation="vertical" isDarkMode={isDarkMode} />
           <div className="page-background">
-              <div 
+              <div
                   ref={editorRef}
                   contentEditable={true}
                   suppressContentEditableWarning={true}
                   onPaste={handlePaste}
+                  onInput={handleInput}
                   className="page-content"
                   data-testid="screenplay-editor"
               >
@@ -302,9 +610,32 @@ const ScreenplayEditor = () => {
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Processing Progress */}
+      {isProcessing && (
+        <div className="fixed top-0 left-0 right-0 z-50 bg-blue-500 h-1">
+          <div
+            className="h-full bg-blue-600 transition-all duration-300"
+            style={{ width: `${processingProgress}%` }}
+          />
+        </div>
+      )}
+
+      {/* Stats and Status */}
       <div className="flex-shrink-0 px-4 py-1.5 text-sm border-t bg-gray-100 dark:bg-gray-700">
-        <span>{documentStats.pages} صفحة</span> | <span>{documentStats.words} كلمة</span>
+        <div className="flex justify-between items-center">
+          <div>
+            <span>{documentStats.pages} صفحة</span> | <span>{documentStats.words} كلمة</span>
+            {isProcessing && <span className="text-blue-500 mr-2">جاري المعالجة...</span>}
+          </div>
+          {importStats && (
+            <div className="text-xs text-gray-600 dark:text-gray-400">
+              {importStats.totalLines} سطر | دقة {Math.round(importStats.averageConfidence * 100)}% |
+              {Object.entries(importStats.classificationsUsed).map(([type, count]) =>
+                ` ${type}: ${count}`
+              ).join(' |')}
+            </div>
+          )}
+        </div>
       </div>
 
       <FindReplaceDialog 
@@ -320,12 +651,24 @@ const ScreenplayEditor = () => {
           // Implement replace all logic
         }}
       />
-      <StylesDialog 
-        isOpen={isStylesDialogOpen} 
-        onClose={() => setStylesDialogOpen(false)} 
+      <StylesDialog
+        isOpen={isStylesDialogOpen}
+        onClose={() => setStylesDialogOpen(false)}
         onStylesUpdate={() => {
           const updatedStyles = customStylesManager.getAllStyles();
           setCustomStyles(updatedStyles);
+        }}
+      />
+
+      {/* AI Configuration Dialog */}
+      <AIConfigDialog
+        isOpen={showAIConfig}
+        onClose={() => setShowAIConfig(false)}
+        onConfigUpdate={(config) => {
+          setUseAI(config.enableAI);
+          if (config.apiKey) {
+            setGeminiApiKey(config.apiKey);
+          }
         }}
       />
     </div>

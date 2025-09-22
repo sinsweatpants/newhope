@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "paths": {
       "@frontend/*": ["./apps/frontend/src/*"],
-      "@backend/*": ["./apps-backend/src/*"],
+      "@backend/*": ["./apps/backend/src/*"],
       "@shared/*": ["./packages/shared/*"]
     }
   },
