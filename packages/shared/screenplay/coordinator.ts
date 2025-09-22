@@ -30,9 +30,54 @@ export class ScreenplayCoordinator {
     return DefaultAgent(line, context, this.getFormatStylesFn) as AgentResult;
   }
 
+  // Helper to decide if an ENTER is needed
+  shouldInsertEnter(prevType: string, currentType: string): boolean {
+    const rules: [string, string][] = [
+      ['scene-header-3', 'action'],
+      ['action', 'character'],
+      ['action', 'dialogue'], 
+      ['dialogue', 'character'],
+      ['dialogue', 'action'],
+      ['dialogue', 'transition'],
+      ['action', 'transition'],
+    ];
+
+    return rules.some(([prev, current]) => prev === prevType && current === currentType);
+  }
+
   processScript(lines: string[]) {
     const ctx: AgentContext = {};
-    const results = lines.map(ln => this.processLine(ln.trim(), ctx));
+    const results: AgentResult[] = [];
+    let previousLineType: string | null = null;
+    
+    // Filter out empty lines from the source script to normalize spacing
+    const nonEmptyLines = lines.map(ln => ln.trim()).filter(ln => ln.length > 0);
+
+    for (const line of nonEmptyLines) {
+      const result = this.processLine(line, ctx);
+      const currentLineType = result.type;
+
+      if (previousLineType) {
+        if (this.shouldInsertEnter(previousLineType, currentLineType)) {
+          // Insert an "ENTER" - a styled empty div
+          const style = this.getFormatStylesFn('action');
+          const styleString = Object.entries(style)
+            .map(([k, v]) => `${k.replace(/([A-Z])/g, '-$1').toLowerCase()}:${v}`)
+            .join(';');
+            
+          const enterLine: AgentResult = {
+            type: 'action', // Treat spacer as an action
+            html: `<div class="action" style="${styleString}">&nbsp;</div>`,
+            processed: true
+          };
+          results.push(enterLine);
+        }
+      }
+
+      results.push(result);
+      previousLineType = result.type; // Use the type from the result object
+    }
+
     return { results };
   }
 }

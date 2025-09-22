@@ -104,7 +104,8 @@ export const CharacterDialogueAgent: FormattingAgent = (line, ctx, getFormatStyl
 export const ActionAgent: FormattingAgent = (line, ctx, getFormatStylesFn) => {
     // A line is an action if it starts with a keyword OR a bullet, BUT it's NOT a character line.
     if (Patterns.actionKeywords.test(line) || (Patterns.actionBullet.test(line) && !Patterns.characterNames.test(line))) {
-        const html = compileHtml("div", `action`, line, getFormatStylesFn);
+        const cleanedLine = line.replace(Patterns.actionBullet, "").trim();
+        const html = compileHtml("div", `action`, cleanedLine, getFormatStylesFn);
         ctx.inDialogue = false;
         return { html, processed: true, confidence: 0.85, elementType: `action`, agentUsed: "ActionAgent", originalLine: line, context: ctx };
     }
