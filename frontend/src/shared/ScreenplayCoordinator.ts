@@ -1,10 +1,9 @@
-import React from 'react';
+import { getFormatStyles } from './formatStyles';
 import { Patterns } from './patterns';
 
 type ScreenplayElement = {
   type: 'SceneHeading' | 'Character' | 'Dialogue' | 'Parenthetical' | 'Action' | 'Transition' | 'Basmala';
   content: string;
-  html: string;
 };
 
 // Text Sanitization Function (from Phase 1)
@@ -16,19 +15,15 @@ const sanitizeScriptInput = (line: string): string => {
 };
 
 export class ScreenplayCoordinator {
-  private formatStylesFunction: (type: string, font?: string, size?: string) => React.CSSProperties;
-
-  constructor(formatStylesFunction: (type: string, font?: string, size?: string) => React.CSSProperties) {
-    this.formatStylesFunction = formatStylesFunction;
-  }
-  getElementHtml(element: ScreenplayElement, font = 'Amiri', size = '12pt'): string {
+  // This function is now a static utility since styling is handled by CSS classes.
+  static getElementHtml(element: ScreenplayElement): string {
     const div = document.createElement('div');
     const className = element.type.toLowerCase();
     div.className = className;
     div.textContent = element.content;
-
+    
     // Apply inline styles for dynamic properties (like font) if needed in the future
-    const styles = this.formatStylesFunction(className, font, size);
+    const styles = getFormatStyles(className); 
     Object.assign(div.style, styles);
 
     return div.outerHTML;
@@ -74,9 +69,7 @@ export class ScreenplayCoordinator {
         currentElementType = 'Action';
       }
       
-      const element = { type: currentElementType, content, html: '' };
-      element.html = this.getElementHtml(element);
-      elements.push(element);
+      elements.push({ type: currentElementType, content });
       lastElementType = currentElementType;
     }
 

@@ -5,7 +5,6 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  root: "./frontend",
   resolve: {
     alias: {
       // Use path.resolve with a relative path from the project root.
@@ -14,11 +13,15 @@ export default defineConfig({
     },
   },
   server: {
-    host: "0.0.0.0",
-    // No proxy needed when backend serves frontend directly
+    proxy: {
+      "/api": {
+        target: "http://localhost:5001",
+        changeOrigin: true,
+      },
+    },
   },
   build: {
-    outDir: "../dist/public",
+    outDir: "dist/public",
     emptyOutDir: true,
   },
 });

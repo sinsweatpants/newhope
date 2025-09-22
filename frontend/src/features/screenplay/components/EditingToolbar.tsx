@@ -17,9 +17,9 @@ const EditingToolbar: React.FC<EditingToolbarProps> = ({ editorRef }) => {
   const [isFindReplaceOpen, setFindReplaceOpen] = useState(false);
 
   const handleFind = (term: string) => {
-    // Basic find functionality using modern browser API
-    if (typeof (window as any).find === 'function') {
-      (window as any).find(term, false, false, true, false, true, false);
+    // Basic find functionality
+    if (window.find) {
+      window.find(term, false, false, true, false, true, false);
     }
   };
 

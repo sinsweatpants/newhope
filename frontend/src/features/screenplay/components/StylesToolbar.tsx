@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { customStylesManager, CustomStyle } from '@/shared/CustomStylesManager';
+import { customStylesManager, CustomStyle } from '@shared/CustomStylesManager';
 import StylesDialog from './StylesDialog';
 
 interface StylesToolbarProps {

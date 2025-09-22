@@ -30,8 +30,12 @@ app.use(express.urlencoded({ extended: false }));
   if (!process.env.K_SERVICE) {
     const argv = minimist(process.argv.slice(2));
     const port = parseInt(argv.port || process.env.PORT || '5000', 10);
-    server.listen(port, "0.0.0.0", () => {
-      log(`serving on http://0.0.0.0:${port}`);
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, () => {
+      log(`serving on port ${port}`);
     });
   }
 })();

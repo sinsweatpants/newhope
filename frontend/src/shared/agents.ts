@@ -1,5 +1,5 @@
 import { Patterns } from './patterns';
-import { ActionType, type FormattingAgent } from './types';
+import { ActionType, type AgentContext, type AgentResult, type FormattingAgent } from './types';
 
 export function isValidCharacterName(name: string): boolean {
   if (!name) return false;
